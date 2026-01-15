@@ -38,9 +38,9 @@ function getPath(obj: unknown, path: readonly (string | number)[]): unknown {
   return cur;
 }
 
-type Plan = "starter" | "pro" | "enterprise";
+type Plan = "pending" | "starter" | "pro" | "enterprise";
 
-function priceToPlan(priceId: string): Plan | null {
+function priceToPlan(priceId: string): Exclude<Plan, "pending"> | null {
   const starter = process.env.STRIPE_PRICE_STARTER ?? "";
   const pro = process.env.STRIPE_PRICE_PRO ?? "";
   const ent = process.env.STRIPE_PRICE_ENTERPRISE ?? "";
@@ -52,6 +52,8 @@ function priceToPlan(priceId: string): Plan | null {
 }
 
 function quotaForPlan(plan: Plan): bigint {
+  if (plan === "pending") return 0n;
+
   const v =
     plan === "starter"
       ? process.env.PBI_QUOTA_STARTER
@@ -192,15 +194,15 @@ stripeRouter.post(
 
       const customerId = (map.rows[0] as { customer_id: string }).customer_id;
 
-      const isGood = status === "active" || status === "trialing";
+const isGood = status === "active" || status === "trialing";
 
-      let plan: Plan = "starter";
-      if (isGood && priceId) {
-        plan = priceToPlan(priceId) ?? "enterprise";
-      }
+let plan: Plan = "pending";
+if (isGood) {
+  const mapped = priceId ? priceToPlan(priceId) : null;
+  plan = mapped ?? "pro"; // or "enterprise" if you want, but "pro" is safer than auto-enterprise
+}
 
-      const quota = quotaForPlan(plan);
-
+const quota = quotaForPlan(plan);
       // Update customer
       await pool.query(
         `UPDATE customers SET plan=$1, quota_per_month=$2 WHERE id=$3`,

@@ -10,10 +10,19 @@ import { hashApiKey } from "../db/queries/apiKeys.js";
 export const portalRouter = Router();
 
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
-const COOKIE_DOMAIN = process.env.PORTAL_COOKIE_DOMAIN ?? "localhost";
+
+/**
+ * Cookie domain rules:
+ * - For production on portal.kojib.com, set PORTAL_COOKIE_DOMAIN=.kojib.com
+ * - For localhost dev, leave undefined (browser rejects "domain=localhost" in many cases)
+ */
+const COOKIE_DOMAIN_ENV = (process.env.PORTAL_COOKIE_DOMAIN ?? "").trim();
+const COOKIE_DOMAIN: string | undefined = COOKIE_DOMAIN_ENV.length > 0 ? COOKIE_DOMAIN_ENV : undefined;
+
 const COOKIE_SECURE = (process.env.PORTAL_COOKIE_SECURE ?? "false") === "true";
 
 type EmailMode = "log" | "resend";
+type Plan = "pending" | "starter" | "pro" | "enterprise";
 
 function getEmailMode(): EmailMode {
   const v = (process.env.EMAIL_MODE ?? "log").toLowerCase();
@@ -110,6 +119,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<Ema
   }
 }
 
+function isPaidPlan(plan: Plan, quotaPerMonth: bigint): boolean {
+  return plan !== "pending" && quotaPerMonth > 0n;
+}
+
 // -------------------------
 // AUTH: Start magic link
 // -------------------------
@@ -117,7 +130,7 @@ portalRouter.post("/auth/start", async (req, res) => {
   const Body = z.object({ email: z.string().email() });
   const { email } = Body.parse(req.body);
 
-  // Create customer if not exists
+  // Create customer if not exists (PENDING until payment)
   const c = await pool.query(`SELECT id FROM customers WHERE email=$1 LIMIT 1`, [email]);
   let customerId: string;
 
@@ -125,7 +138,7 @@ portalRouter.post("/auth/start", async (req, res) => {
     const id = randomUUID();
     await pool.query(
       `INSERT INTO customers (id, email, plan, quota_per_month, is_active)
-       VALUES ($1, $2, 'starter', 100000, TRUE)`,
+       VALUES ($1, $2, 'pending', 0, TRUE)`,
       [id, email]
     );
     customerId = id;
@@ -184,7 +197,7 @@ portalRouter.post("/auth/start", async (req, res) => {
     </div>
   `;
 
-  // IMPORTANT: do not leak whether email exists; always respond ok
+  // IMPORTANT: always respond ok to avoid email enumeration
   const r = await sendEmail(email, "Your PBI Portal sign-in link", html);
   if (!r.ok) {
     // eslint-disable-next-line no-console
@@ -233,7 +246,7 @@ portalRouter.post("/auth/consume", async (req, res) => {
     secure: COOKIE_SECURE,
     sameSite: "lax",
     path: "/",
-    domain: COOKIE_DOMAIN
+    ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
   });
 
   res.json({ ok: true });
@@ -247,7 +260,7 @@ portalRouter.post("/auth/logout", requirePortalSession, async (req: PortalAuthed
   if (typeof sid === "string" && sid.length > 0) {
     await pool.query(`UPDATE portal_sessions SET revoked_at=now() WHERE id=$1`, [sid]);
   }
-  res.clearCookie("pbi_portal_session", { path: "/", domain: COOKIE_DOMAIN });
+  res.clearCookie("pbi_portal_session", { path: "/", ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}) });
   res.json({ ok: true });
 });
 
@@ -282,6 +295,14 @@ portalRouter.get("/api-keys", requirePortalSession, async (req: PortalAuthedRequ
 });
 
 portalRouter.post("/api-keys", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  // ✅ Paid gate: cannot mint API keys unless plan is active + quota > 0
+  const plan = req.portalCustomer!.plan as Plan;
+  const quota = req.portalCustomer!.quotaPerMonth; // bigint
+  if (!isPaidPlan(plan, quota)) {
+    res.status(402).json({ error: "no_active_plan" });
+    return;
+  }
+
   const Body = z.object({ label: z.string().min(1).max(60).default("Portal Key") });
   const { label } = Body.parse(req.body);
 
@@ -292,7 +313,7 @@ portalRouter.post("/api-keys", requirePortalSession, async (req: PortalAuthedReq
   await pool.query(
     `INSERT INTO api_keys (id, label, key_hash, plan, quota_per_month, is_active, customer_id)
      VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
-    [id, label, keyHash, req.portalCustomer!.plan, req.portalCustomer!.quotaPerMonth.toString(), req.portalCustomer!.id]
+    [id, label, keyHash, plan, quota.toString(), req.portalCustomer!.id]
   );
 
   res.json({ ok: true, apiKeyId: id, rawApiKey: raw });
