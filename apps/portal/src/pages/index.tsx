@@ -402,7 +402,7 @@ POST /v1/pbi/verify     { assertion }
                   View endpoints →
                 </a>
                 <a className="pbi-btnGhost" href="#access">
-                  Start with a magic link →
+                  Get Access →
                 </a>
                 <button className="pbi-btnGhost" type="button" onClick={openSales}>
                   Talk to sales →
@@ -495,7 +495,7 @@ POST /v1/pbi/verify     { assertion }
 
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnPrimary" href="#access">
-                  Start with a magic link →
+                 Get Access →
                 </a>
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   Read API docs

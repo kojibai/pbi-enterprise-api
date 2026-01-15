@@ -271,6 +271,37 @@ body{ margin:0; }
   text-underline-offset: 3px;
 }
 /* ======================
+   Mint/Teal buttons must always use BLACK text
+   (anchors + buttons, all states)
+====================== */
+
+.pbi-btnPrimary,
+.pbi-btnPrimary:link,
+.pbi-btnPrimary:visited,
+button.pbi-btnPrimary,
+button.pbi-btnPrimary:link,
+button.pbi-btnPrimary:visited{
+  color: #05070e !important;
+}
+
+.pbi-btnPrimary:hover,
+.pbi-btnPrimary:active,
+.pbi-btnPrimary:focus,
+.pbi-btnPrimary:focus-visible{
+  color: #05070e !important;
+}
+
+/* If you have other mint buttons (like pbi-btnSend) enforce too */
+.pbi-btnSend,
+.pbi-btnSend:link,
+.pbi-btnSend:visited,
+.pbi-btnSend:hover,
+.pbi-btnSend:active,
+.pbi-btnSend:focus,
+.pbi-btnSend:focus-visible{
+  color: #05070e !important;
+}
+/* ======================
    HERO
 ====================== */
 
