@@ -236,16 +236,24 @@ publicRouter.get("/redoc", (_req, res) => {
     .dot{width:10px;height:10px;border-radius:999px;background:rgba(120,255,231,.85);
       box-shadow:0 0 0 3px rgba(120,255,231,.12),0 0 18px rgba(120,255,231,.25);}
     .links{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
-    .links a{
-      color: rgba(234,243,255,.92);
-      text-decoration:none;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      padding: 8px 10px;
-      border-radius: 12px;
-    }
+.links{
+  display:flex;
+  gap:10px;
+  flex-wrap:nowrap;          /* ✅ never wrap */
+  white-space:nowrap;        /* ✅ keep on one line */
+  justify-content:flex-end;
+  overflow-x:auto;           /* ✅ allow scroll instead of wrap */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width:none;      /* Firefox hide */
+}
+.links::-webkit-scrollbar{ display:none; } /* Chrome/Safari hide */
     .links a:hover{ background: rgba(255,255,255,.08); }
     #redoc{ min-height: calc(100vh - 52px); }
+
+    @media (max-width: 520px){
+  .links a{ padding:7px 9px; border-radius:10px; }
+  .topbar{ padding:9px 12px; }
+}
   </style>
 </head>
 <body>
