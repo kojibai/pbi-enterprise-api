@@ -254,7 +254,12 @@ body{ margin:0; }
   .pbi-brandSub{ display:none; } /* prevents any chance of collision */
   .pbi-nav{ max-width: 72vw; }
 }
-
+.planGrid{
+  display:grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
+}
 /* ======================
    HERO
 ====================== */

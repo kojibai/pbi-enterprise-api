@@ -15,6 +15,8 @@ type MeResp = {
 type CheckoutResp = { url: string };
 
 const API_BASE = (process.env.NEXT_PUBLIC_PBI_API_BASE ?? "https://api.kojib.com").replace(/\/+$/, "");
+const SALES_CALENDLY =
+  (process.env.NEXT_PUBLIC_PBI_SALES_CALENDLY_URL ?? "https://calendly.com/kojibchat/one-on-one").trim();
 
 // Production pricing (matches your landing page)
 const PLAN_PRICE: Record<PlanKey, string> = {
@@ -200,6 +202,59 @@ export default function BillingIndex() {
               note={!PRICE_IDS.enterprise ? "Set NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE" : "For critical infrastructure."}
               onClick={() => startCheckout("enterprise")}
             />
+
+            <div className="planCard planCardAssured">
+  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <span
+      style={{
+        ...planDotStyle,
+        background: "rgba(120,255,231,.92)",
+        boxShadow: "0 0 0 3px rgba(120,255,231,.14), 0 0 18px rgba(120,255,231,.22)"
+      }}
+    />
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontWeight: 950, letterSpacing: 0.2 }}>PBI Assured</div>
+      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 2 }}>
+        Procurement-ready for regulated and mission-critical systems.
+      </div>
+    </div>
+  </div>
+
+  <div style={{ marginTop: 14, fontSize: 26, fontWeight: 950 }}>Talk to Sales</div>
+
+  <ul style={ulStyle}>
+    {[
+      "Custom verification capacity + burst",
+      "SLA / priority support options",
+      "Security review packet on request",
+      "Receipts + retention strategy for audits",
+      "Roadmap alignment for regulated environments"
+    ].map((h) => (
+      <li key={h} style={liStyle}>
+        {h}
+      </li>
+    ))}
+  </ul>
+
+  <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
+    Best for banks, governments, custodians, and high-assurance control planes.
+  </div>
+
+  <a
+    className="planBtn planBtnPrimary"
+    href={SALES_CALENDLY}
+    rel="noreferrer"
+    style={{
+      ...btnStyle,
+      display: "inline-flex",
+      textDecoration: "none",
+      alignItems: "center",
+      justifyContent: "center"
+    }}
+  >
+    Schedule a call →
+  </a>
+</div>
           </div>
 
           <div style={hrStyle} />
