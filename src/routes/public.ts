@@ -154,7 +154,7 @@ publicRouter.get("/", (_req, res) => {
           <div class="k">Docs</div>
           <div class="links">
             <a class="btn" href="/docs">Swagger UI</a>
-            <a class="btn" href="/openapi.yaml">OpenAPI YAML</a>
+            <a class="btn" href="/redoc">Redoc</a>
             <a class="btn" href="/health">Health</a>
           </div>
           <div class="hr"></div>
@@ -201,7 +201,118 @@ publicRouter.get("/openapi.yaml", (_req, res) => {
   res.type("text/yaml").send(loaded.yamlText);
 });
 
-// ---- Swagger UI (correct mounting + typed)
+// ---- Redoc (TOP-LEVEL route, NOT inside /docs)
+publicRouter.get("/redoc", (_req, res) => {
+  res.type("text/html").send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PBI Enterprise API · Redoc</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+  <style>
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(120,255,231,.10), transparent 55%),
+        radial-gradient(900px 700px at 80% 20%, rgba(140,155,255,.08), transparent 60%),
+        linear-gradient(180deg,#05070e,#070b18);
+      color: #eaf3ff;
+    }
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(0,0,0,.35);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      padding: 10px 14px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: rgba(234,243,255,.92);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+    }
+    .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.2px;font-size:13px;white-space:nowrap;}
+    .dot{width:10px;height:10px;border-radius:999px;background:rgba(120,255,231,.85);
+      box-shadow:0 0 0 3px rgba(120,255,231,.12),0 0 18px rgba(120,255,231,.25);}
+    .links{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+    .links a{
+      color: rgba(234,243,255,.92);
+      text-decoration:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      padding: 8px 10px;
+      border-radius: 12px;
+    }
+    .links a:hover{ background: rgba(255,255,255,.08); }
+    #redoc{ min-height: calc(100vh - 52px); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> PBI Enterprise API · Redoc</div>
+    <div class="links">
+      <a href="/">Home</a>
+      <a href="/docs">Swagger</a>
+      <a href="/openapi.yaml">OpenAPI</a>
+    </div>
+  </div>
+
+  <div id="redoc"></div>
+
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <script src="/redoc-init.js"></script>
+</body>
+</html>`);
+});
+
+publicRouter.get("/redoc-init.js", (_req, res) => {
+  res.type("application/javascript").send(`
+    Redoc.init("/openapi.yaml", {
+      hideHostname: true,
+      expandResponses: "200,201",
+      theme: {
+        colors: {
+          primary: { main: "#78ffe7" },
+          text: {
+            primary: "#ffffff",
+            secondary: "rgba(255,255,255,.78)"
+          },
+          border: { dark: "rgba(255,255,255,.14)", light: "rgba(255,255,255,.10)" },
+          http: { get: "#78ffe7", post: "#9aaaff", put: "#ffd38a", delete: "#ff8aa0" },
+          responses: { success: "#78ffe7", error: "#ff8aa0" }
+        },
+        typography: {
+          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          headings: {
+            fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+            fontWeight: "700",
+            color: "#ffffff"
+          },
+          links: { color: "#78ffe7" },
+          code: {
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
+            color: "#ffffff",
+            backgroundColor: "rgba(255,255,255,.06)"
+          }
+        },
+        sidebar: {
+          backgroundColor: "rgba(0,0,0,.32)",
+          textColor: "#ffffff",
+          activeTextColor: "#78ffe7",
+          groupItems: { textTransform: "none" }
+        },
+        rightPanel: {
+          backgroundColor: "#05070e",
+          textColor: "#ffffff"
+        }
+      }
+    }, document.getElementById("redoc"));
+  `);
+});
+
+// ---- Swagger UI (correct mounting + typed-safe)
 publicRouter.use("/docs", (req, res, next) => {
   const loaded = loadSpec();
   if (!loaded) {
@@ -209,11 +320,10 @@ publicRouter.use("/docs", (req, res, next) => {
     return;
   }
 
-  // Mount swagger-ui static assets under /docs/*
+  // swaggerUi.serve is an array of handlers in typings; run them in order
   const serveHandlers = swaggerUi.serve;
   const serve = Array.isArray(serveHandlers) ? serveHandlers : [serveHandlers];
 
-  // Run the serve handlers first, then the setup handler
   let i = 0;
   const runServe = (): void => {
     const h = serve[i];
@@ -229,18 +339,124 @@ publicRouter.use("/docs", (req, res, next) => {
     const setup = swaggerUi.setup(loaded.spec, {
       customSiteTitle: "PBI Enterprise API Docs",
       swaggerOptions: { persistAuthorization: true },
-      customCss: `
-        body { background: #05070e; }
-        .swagger-ui .topbar { background: rgba(255,255,255,.06); border-bottom: 1px solid rgba(255,255,255,.12); }
-        .swagger-ui .topbar a { color: #eaf3ff !important; }
-        .swagger-ui, .swagger-ui .info p, .swagger-ui .info li, .swagger-ui .opblock-description-wrapper p {
-          color: rgba(234,243,255,.86);
-        }
-        .swagger-ui .scheme-container { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); }
-        .swagger-ui .opblock { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10); }
-        .swagger-ui .opblock-summary { background: rgba(0,0,0,.22); }
-        .swagger-ui .btn { border-radius: 12px; }
-      `
+customCss: `
+  /* Base */
+  html, body { background: #05070e !important; }
+  .swagger-ui, .swagger-ui * { color: rgba(255,255,255,.92) !important; }
+
+  /* Top bar */
+  .swagger-ui .topbar {
+    background: rgba(0,0,0,.35) !important;
+    border-bottom: 1px solid rgba(255,255,255,.12) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  /* Cards / blocks */
+  .swagger-ui .opblock {
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.35) !important;
+  }
+  .swagger-ui .opblock-summary {
+    background: rgba(0,0,0,.22) !important;
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+  }
+
+  /* Titles / headings */
+  .swagger-ui .info .title,
+  .swagger-ui .info h1,
+  .swagger-ui .info h2,
+  .swagger-ui .info h3,
+  .swagger-ui .opblock-tag,
+  .swagger-ui .opblock-summary-path {
+    color: #ffffff !important;
+  }
+
+  /* Description text */
+  .swagger-ui .info p,
+  .swagger-ui .info li,
+  .swagger-ui .opblock-description-wrapper p,
+  .swagger-ui .markdown p,
+  .swagger-ui .markdown li {
+    color: rgba(255,255,255,.84) !important;
+  }
+
+  /* Auth box / inputs */
+  .swagger-ui input[type="text"],
+  .swagger-ui input[type="password"],
+  .swagger-ui input[type="search"],
+  .swagger-ui select,
+  .swagger-ui textarea {
+    background: rgba(0,0,0,.30) !important;
+    border: 1px solid rgba(255,255,255,.16) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important;
+  }
+  .swagger-ui input::placeholder,
+  .swagger-ui textarea::placeholder {
+    color: rgba(255,255,255,.55) !important;
+  }
+
+  /* Code blocks */
+  .swagger-ui .highlight-code,
+  .swagger-ui pre,
+  .swagger-ui code {
+    background: rgba(0,0,0,.32) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    border-radius: 12px !important;
+  }
+
+  /* Buttons */
+  .swagger-ui .btn {
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,.16) !important;
+    background: rgba(255,255,255,.06) !important;
+    color: #ffffff !important;
+  }
+  .swagger-ui .btn:hover {
+    background: rgba(255,255,255,.08) !important;
+  }
+
+  /* Make the "Authorize" + scheme container match */
+  .swagger-ui .scheme-container {
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35) !important;
+  }
+
+  /* Ensure badges/tags are readable */
+  .swagger-ui .opblock-summary-method { color: #05070e !important; }
+  .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #9aaaff !important; }
+  .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #78ffe7 !important; }
+  .swagger-ui .opblock.opblock-put .opblock-summary-method { background: #ffd38a !important; }
+  .swagger-ui .opblock.opblock-delete .opblock-summary-method { background: #ff8aa0 !important; }
+/* Response tabs: selected tab has white bg -> must be dark text */
+.swagger-ui .tab li,
+.swagger-ui .tab li button {
+  color: rgba(255,255,255,.88) !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 12px !important;
+}
+
+.swagger-ui .tab li.active,
+.swagger-ui .tab li.active button {
+  background: #ffffff !important;
+  border-color: rgba(255,255,255,.22) !important;
+  color: #05070e !important;           /* ✅ dark text on white */
+}
+
+.swagger-ui .tab li.active span,
+.swagger-ui .tab li.active button span {
+  color: #05070e !important;           /* ✅ any inner span text */
+}
+  /* Links */
+  .swagger-ui a { color: #78ffe7 !important; }
+`
     });
 
     setup(req, res, next);

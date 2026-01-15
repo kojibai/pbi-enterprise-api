@@ -21,7 +21,19 @@ export function makeApp() {
   app.use(requestId);
   app.use(rateLimit);
 
-  app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        // Keep your existing strictness but allow Redoc CDN
+        "script-src": ["'self'", "https://cdn.redoc.ly"],
+        "style-src": ["'self'", "https:", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:"]
+      }
+    }
+  })
+);
   app.use(cors({ origin: true }));
   app.use(express.json({ limit: "1mb" }));
 
