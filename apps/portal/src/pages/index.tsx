@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { apiJson } from "../lib/api";
 
-const API_DOCS = "https://api.kojib.com/redoc";
+const API_DOCS = "https://api.kojib.com/";
 
 export default function HomePage() {
   const router = useRouter();
@@ -83,7 +83,7 @@ export default function HomePage() {
               How it works
             </a>
             <a href={API_DOCS} rel="noreferrer">
-              Docs
+              API
             </a>
             <a href="#pricing">Pricing</a>
             <a className="pbi-navCta" href="#access">
