@@ -54,7 +54,22 @@ app.use(
     }
   })
 );
-  app.use(cors({ origin: true }));
+const allowedOrigins = new Set<string>([
+  "https://portal.kojib.com",
+  "http://localhost:3000"
+]);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // allow server-to-server or same-origin with no Origin header
+      if (!origin) return cb(null, true);
+      return cb(null, allowedOrigins.has(origin));
+    },
+    credentials: true
+  })
+);
+
   app.use(express.json({ limit: "1mb" }));
 
   // ✅ Public routes FIRST (/, /docs, /openapi.yaml, /favicon, etc.)
