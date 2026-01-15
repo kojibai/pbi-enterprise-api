@@ -7,7 +7,9 @@ import { requestId } from "./middleware/requestId.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { apiKeyAuth } from "./middleware/apiKeyAuth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-
+import cookieParser from "cookie-parser";
+import { portalRouter } from "./routes/portal.js";
+import { stripeRouter } from "./routes/stripe.js";
 import { publicRouter } from "./routes/public.js";
 import { healthRouter } from "./routes/health.js";
 import { pbiRouter } from "./routes/pbi.js";
@@ -20,7 +22,7 @@ export function makeApp() {
   app.use(pinoHttp({ logger }));
   app.use(requestId);
   app.use(rateLimit);
-
+app.use(cookieParser());
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -66,7 +68,8 @@ app.use(
   app.use("/v1/pbi", pbiRouter);
   app.use("/v1/billing", billingRouter);
   app.use("/v1/admin", adminRouter);
-
+app.use("/v1/portal", portalRouter);
+app.use("/v1/stripe", stripeRouter);
   // ✅ Explicit 404 JSON (prevents "Cannot GET /" surprises)
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });
