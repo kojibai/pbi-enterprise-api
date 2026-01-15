@@ -5,7 +5,20 @@ import swaggerUi from "swagger-ui-express";
 import YAML from "yaml";
 
 export const publicRouter = Router();
+// ---- Silence common automatic browser requests (prevents console 404 noise)
+const NOISE_PATHS = [
+  "/favicon.ico",
+  "/apple-touch-icon.png",
+  "/apple-touch-icon-precomposed.png",
+  "/site.webmanifest",
+  "/manifest.webmanifest",
+  "/manifest.json",
+  "/robots.txt"
+] as const;
 
+for (const p of NOISE_PATHS) {
+  publicRouter.get(p, (_req, res) => res.status(204).end());
+}
 function loadSpec(): { yamlText: string; spec: object } {
   const p = path.join(process.cwd(), "openapi.yaml");
   const yamlText = fs.readFileSync(p, "utf8");
