@@ -79,9 +79,16 @@ export default function HomePage() {
           </div>
 
           <nav className="pbi-nav">
-            <a href={API_DOCS} rel="noreferrer">Docs</a>
-            <a href="#access">Get access</a>
+            <a href="#how" rel="noreferrer">
+              How it works
+            </a>
+            <a href={API_DOCS} rel="noreferrer">
+              Docs
+            </a>
             <a href="#pricing">Pricing</a>
+            <a className="pbi-navCta" href="#access">
+              Get access
+            </a>
           </nav>
         </header>
 
@@ -92,23 +99,24 @@ export default function HomePage() {
               <div>
                 <div className="pbi-pill">
                   <span className="pbi-pillDot" />
-                  Presence Gate for High-Risk Systems
+                  Presence verification for irreversible actions
                 </div>
 
                 <h1 className="pbi-h1">
-                  Make “a human was present” <span>a verifiable system primitive.</span>
+                  If it can’t be undone, <span>it must be presence-verified.</span>
                 </h1>
 
                 <p className="pbi-lead">
-                  PBI turns real-world presence into an API call. Bind a challenge to an action hash, require a live WebAuthn
-                  ceremony (UP+UV), and receive a non-replayable receipt suitable for audit and dispute resolution.
+                  PBI is a drop-in presence layer for high-risk systems. Bind a WebAuthn challenge to an <b>action hash</b>, require a
+                  live <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit
+                  forever.
                 </p>
 
                 <div className="pbi-valueGrid">
-                  <ValueLine title="Accountless verification" body="No identity database. No passwords. No “trust me.”" />
-                  <ValueLine title="Non-repudiable receipts" body="Receipt hash binds presence to the exact action." />
-                  <ValueLine title="Drop-in enforcement" body="Wrap your most dangerous endpoints in minutes." />
-                  <ValueLine title="Metering + billing built-in" body="Usage, invoices, and plan quotas are automatic." />
+                  <ValueLine title="Action-bound proof" body="Receipts bind presence to the exact operation you intended to perform." />
+                  <ValueLine title="Non-replayable by design" body="Single-use challenges stop replays, scripts, and delegated approvals." />
+                  <ValueLine title="No identity database" body="PBI verifies presence without storing users, passwords, or biometrics." />
+                  <ValueLine title="Audit & dispute ready" body="Cryptographic receipts are verifiable long after logs are gone." />
                 </div>
 
                 <div className="pbi-ctaRow">
@@ -116,21 +124,21 @@ export default function HomePage() {
                     Get access <span aria-hidden>→</span>
                   </a>
                   <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
-                    Read the docs
+                    Read API docs
                   </a>
-                  <a className="pbi-btnGhost" href="#pricing">
-                    Pricing
+                  <a className="pbi-btnGhost" href="#how">
+                    See the flow
                   </a>
                 </div>
 
                 <div className="pbi-proofStrip">
-                  <div className="pbi-proofLabel">Designed for teams who can’t afford “maybe”</div>
+                  <div className="pbi-proofLabel">Built for teams who can’t afford “maybe” approvals</div>
                   <div className="pbi-proofPills">
-                    <span className="pbi-proofPill">Financial infrastructure</span>
+                    <span className="pbi-proofPill">Treasury & payouts</span>
                     <span className="pbi-proofPill">Admin control planes</span>
-                    <span className="pbi-proofPill">Governance systems</span>
-                    <span className="pbi-proofPill">High-value authorship</span>
-                    <span className="pbi-proofPill">Irreversible actions</span>
+                    <span className="pbi-proofPill">Governance & multisig</span>
+                    <span className="pbi-proofPill">Deploy & production changes</span>
+                    <span className="pbi-proofPill">Legal / ownership actions</span>
                   </div>
                 </div>
               </div>
@@ -148,28 +156,32 @@ export default function HomePage() {
                 <div className="pbi-sideList">
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>a human was present (UP+UV)</span>
+                    <span>
+                      a human was present <b>(UP+UV)</b>
+                    </span>
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>for this exact challenge + action hash</span>
+                    <span>for this exact action hash</span>
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>within expiry</span>
+                    <span>within expiry, single-use (non-replayable)</span>
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>single-use (non-replayable)</span>
+                    <span>verifiable later by receipt hash</span>
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>auditable by receipt hash</span>
+                    <span>
+                      no biometric data stored, <b>no identity database</b>
+                    </span>
                   </div>
                 </div>
 
-                <pre className="pbi-code">{`POST /v1/pbi/challenge
-POST /v1/pbi/verify
+                <pre className="pbi-code">{`POST /v1/pbi/challenge  { actionHash }
+POST /v1/pbi/verify     { assertion }
 → receiptId + receiptHashHex`}</pre>
 
                 <div className="pbi-section">
@@ -181,38 +193,98 @@ POST /v1/pbi/verify
             </div>
           </section>
 
-          {/* HOW IT WORKS */}
+          {/* WHY / WHAT IT REPLACES */}
+          <section className="pbi-section" id="how">
+            <SectionHead
+              kicker="Why PBI exists"
+              title="From account trust → human presence proof"
+              body="Passwords, sessions, and tokens prove only that something authenticated. PBI proves a human was physically present and authorized the exact action you care about."
+            />
+
+            <FigureCard
+              img="/pbi_4.png"
+              alt="From Account Trust to Human Presence Proof — Legacy Authentication vs PBI"
+              caption="Legacy auth answers “who has access?” PBI answers “was a human present for this exact irreversible action?”"
+            />
+          </section>
+
+          {/* CORE IMAGES: WORKFLOW + INTEGRATION + FLOW */}
           <section className="pbi-section">
-            <div className="pbi-sectionGrid3">
-              <InfoCard title="1) Bind" body="Hash the action you’re about to perform. Ask PBI for a challenge bound to that hash." />
-              <InfoCard title="2) Prove presence" body="User completes FaceID/TouchID WebAuthn ceremony (UP+UV). No accounts required." />
-              <InfoCard title="3) Enforce" body="Proceed only if verify returns PBI_VERIFIED. Store the receipt so you can prove it later." />
+            <SectionHead
+              kicker="Mechanism"
+              title="Presence verification is a simple, strict flow"
+              body="Hash the action, issue a challenge bound to that hash, require UP+UV, then store the receipt. If verify doesn’t return PBI_VERIFIED, you do not proceed."
+            />
+
+            <div className="pbi-figGrid">
+              <FigureCard img="/pbi_1.png" alt="PBI Workflow: Proof of Human Presence" />
+              <FigureCard img="/pbi_2.png" alt="PBI Integration into a Sensitive Endpoint" />
+              <FigureCard img="/pbi_3.png" alt="WebAuthn Challenge-Verify Flow for Presence-Bound Identity" />
+            </div>
+
+            <div className="pbi-sectionGrid3" style={{ marginTop: 14 }}>
+              <InfoCard title="1) Bind the action" body="Hash what you’re about to do (transfer, rotate keys, deploy). Challenge is bound to that hash." />
+              <InfoCard title="2) Prove presence (UP+UV)" body="User completes a live WebAuthn ceremony. No accounts required for the proof." />
+              <InfoCard title="3) Enforce + store receipt" body="Proceed only on PBI_VERIFIED. Store receipt hash for audit, forensics, disputes." />
             </div>
           </section>
 
           {/* USE CASES */}
           <section className="pbi-section">
-            <div className="pbi-card">
-              <div className="pbi-cardTitle">Wrap your most sensitive endpoints.</div>
+            <SectionHead
+              kicker="Where it belongs"
+              title="If it can’t be undone, it must be presence-verified"
+              body="PBI is for operations where “approved” must mean “a human was physically present and knowingly authorized it.”"
+            />
+
+            <FigureCard img="/pbi_5.png" alt="Irreversible actions use-case grid for PBI" />
+
+            <div className="pbi-card" style={{ marginTop: 14 }}>
+              <div className="pbi-cardTitle">Common enforcement points</div>
               <div className="pbi-cardBody">
-                Place PBI in front of “can’t be undone” operations: money, control, authorship, irreversible changes.
+                Wrap the endpoints that move money, change control, or create irreversible commitments.
               </div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
                 <MiniCard title="Treasury & transfers" body="Presence-gate wires, payouts, escrow release." />
                 <MiniCard title="Admin & access control" body="Gate role changes, key rotations, deploy approvals." />
                 <MiniCard title="Governance actions" body="Gate votes, proposals, multisig flows." />
-                <MiniCard title="Authorship confirmation" body="Presence-stamp contracts and publications." />
+                <MiniCard title="Authorship confirmation" body="Presence-stamp contracts, releases, publications." />
                 <MiniCard title="Critical config changes" body="Gate flags, production settings, incident actions." />
                 <MiniCard title="High-risk user actions" body="Gate recovery, withdraw, device enrollment." />
               </div>
 
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
-                  See endpoints →
+                  View endpoints →
+                </a>
+                <a className="pbi-btnGhost" href="#access">
+                  Start with a magic link →
                 </a>
               </div>
             </div>
+          </section>
+
+          {/* RECEIPT ANATOMY */}
+          <section className="pbi-section">
+            <SectionHead
+              kicker="Evidence layer"
+              title="The PBI receipt: proof, not logs"
+              body="Logs are mutable, incomplete, and rarely dispute-ready. A receipt is cryptographic evidence: action-bound, timestamped, single-use, and verifiable long after the event."
+            />
+
+            <FigureCard img="/pbi_6.png" alt="PBI Receipt Anatomy: Proof, Not Logs" caption="No biometric data stored. No identity stored. Receipts remain verifiable." />
+          </section>
+
+          {/* ARCHITECTURE PLACEMENT */}
+          <section className="pbi-section">
+            <SectionHead
+              kicker="Integration"
+              title="PBI does not replace identity — it hardens actions"
+              body="Keep your existing auth (SSO/OAuth/JWT). Add PBI only where you need cryptographic proof of human presence for irreversible operations."
+            />
+
+            <FigureCard img="/pbi_7.png" alt="Where PBI fits in your architecture" />
           </section>
 
           {/* PRICING */}
@@ -220,7 +292,7 @@ POST /v1/pbi/verify
             <div className="pbi-card">
               <div className="pbi-cardTitle">Pricing</div>
               <div className="pbi-cardBody">
-                Choose your verification capacity. Upgrade anytime — quotas apply automatically via webhook.
+                Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.
               </div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
@@ -233,7 +305,7 @@ POST /v1/pbi/verify
                   bullets={[
                     "Presence verification core",
                     "Starter verification quota",
-                    "Audit-ready receipt hashes",
+                    "Receipt hash + audit trail",
                     "Client portal + billing"
                   ]}
                 />
@@ -243,12 +315,12 @@ POST /v1/pbi/verify
                   price="$499"
                   period="/month"
                   tagline="Higher throughput + more automation."
-                  bestFor="Best for: products scaling usage and enforcement coverage."
+                  bestFor="Best for: products scaling enforcement coverage."
                   bullets={[
                     "Everything in Starter",
                     "Higher verification quota",
                     "Priority processing",
-                    "Designed for scaling teams"
+                    "Built for scaling teams"
                   ]}
                 />
 
@@ -263,15 +335,18 @@ POST /v1/pbi/verify
                     "Everything in Pro",
                     "Highest verification quota",
                     "Enterprise reliability + throughput",
-                    "Built for high-risk operations",
+                    "Designed for irreversible operations",
                     "Dispute & compliance ready"
                   ]}
                 />
               </div>
 
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnPrimary" href="#access">
                   Start with a magic link →
+                </a>
+                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                  Read API docs
                 </a>
               </div>
             </div>
@@ -312,20 +387,20 @@ POST /v1/pbi/verify
               </div>
 
               <div className="pbi-card" style={{ background: "rgba(0,0,0,.22)" }}>
-                <div className="pbi-proofLabel">Why this works</div>
+                <div className="pbi-proofLabel">For security reviewers</div>
                 <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
-                  Presence, not accounts.
+                  What PBI guarantees (and what it doesn’t)
                 </div>
                 <div className="pbi-cardBody">
-                  PBI does not store identities. It verifies a live presence ceremony and returns a receipt bound to the action you
-                  chose to sign.
+                  PBI produces cryptographic proof of live human presence for a specific action. It does not attempt to identify who
+                  the user is, nor does it store biometric data.
                 </div>
 
                 <div className="pbi-section" style={{ display: "grid", gap: 10 }}>
-                  <ProofLine k="Accountless" v="No usernames, passwords, or identity databases." />
-                  <ProofLine k="Non-repudiable" v="UP+UV assertion + receipt hash = audit trail." />
-                  <ProofLine k="Composable" v="Wrap /transfer/commit, /admin/approve, /deploy/release…" />
-                  <ProofLine k="Fast to ship" v="Drop-in wrapper: challenge → verify → receipt." />
+                  <ProofLine k="Guarantee" v="UP+UV ceremony occurred for this action hash, single-use, within expiry." />
+                  <ProofLine k="Does not do" v="Identity resolution, KYC, biometric storage, or user databases." />
+                  <ProofLine k="Composable with" v="SSO/OAuth/JWT, RBAC/ABAC, SIEM, policy engines, existing audit tooling." />
+                  <ProofLine k="Operational model" v="challenge → verify → receipt; enforce only on PBI_VERIFIED." />
                 </div>
               </div>
             </div>
@@ -335,7 +410,9 @@ POST /v1/pbi/verify
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <a href="/terms">Terms</a>
                 <a href="/privacy">Privacy</a>
-                <a href={API_DOCS} rel="noreferrer">Docs</a>
+                <a href={API_DOCS} rel="noreferrer">
+                  API Docs
+                </a>
               </div>
             </footer>
           </section>
@@ -344,6 +421,35 @@ POST /v1/pbi/verify
     </div>
   );
 }
+
+function SectionHead({ kicker, title, body }: { kicker: string; title: string; body: string }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div className="pbi-proofLabel">{kicker}</div>
+      <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
+        {title}
+      </div>
+      <div className="pbi-cardBody" style={{ marginTop: 6, maxWidth: 920 }}>
+        {body}
+      </div>
+    </div>
+  );
+}
+
+function FigureCard({ img, alt, caption }: { img: string; alt: string; caption?: string }) {
+  const { basePath } = useRouter();
+
+  const src = (basePath || "") + img; // img should be like "/pbi_1.png"
+
+  return (
+    <div className="pbi-figure">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="pbi-figureImg" src={src} alt={alt} loading="lazy" />
+      {caption ? <div className="pbi-figureCap">{caption}</div> : null}
+    </div>
+  );
+}
+
 
 function ValueLine({ title, body }: { title: string; body: string }) {
   return (
@@ -445,7 +551,11 @@ function PlanCard({
         borderColor: featured ? "rgba(120,255,231,.32)" : "rgba(255,255,255,.12)"
       }}
     >
-      {featured ? <div className="pbi-sideTag" style={{ float: "right" }}>Recommended</div> : null}
+      {featured ? (
+        <div className="pbi-sideTag" style={{ float: "right" }}>
+          Recommended
+        </div>
+      ) : null}
 
       <div className="pbi-proofLabel">Plan</div>
       <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
