@@ -137,9 +137,6 @@ export default function HomePage() {
               API
             </a>
             <a href="#pricing">Pricing</a>
-            <button className="pbi-navSales" type="button" onClick={openSales}>
-              Talk to Sales
-            </button>
             <a className="pbi-navCta" href="#access">
               Get access
             </a>
@@ -424,9 +421,6 @@ POST /v1/pbi/verify     { assertion }
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnPrimary" href="#access">
                   Start with a magic link →
-                </a>
-                <a className="pbi-btnGhost" href={SALES_CALENDLY} rel="noreferrer">
-                  Schedule a call →
                 </a>
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   Read API docs
