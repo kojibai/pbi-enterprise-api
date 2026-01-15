@@ -17,7 +17,7 @@ export default function Callback() {
           body: JSON.stringify({ token })
         });
         setMsg("✅ Signed in. Redirecting…");
-        await router.replace("/");
+        await router.replace("/console");
       } catch {
         setMsg("❌ Link expired or invalid.");
       }
