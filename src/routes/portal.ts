@@ -13,7 +13,7 @@ const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
 
 /**
  * Cookie domain rules:
- * - For production on portal.kojib.com, set PORTAL_COOKIE_DOMAIN=.kojib.com
+ * - For production on pbi.kojib.com, set PORTAL_COOKIE_DOMAIN=.kojib.com
  * - For localhost dev, leave undefined (browser rejects "domain=localhost" in many cases)
  */
 const COOKIE_DOMAIN_ENV = (process.env.PORTAL_COOKIE_DOMAIN ?? "").trim();

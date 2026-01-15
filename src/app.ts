@@ -59,7 +59,7 @@ export function makeApp() {
   );
 
   // CORS for portal (credentials required for cookies)
-  const allowedOrigins = new Set<string>(["https://portal.kojib.com", "http://localhost:3000"]);
+  const allowedOrigins = new Set<string>(["https://pbi.kojib.com", "http://localhost:3000"]);
 
   app.use(
     cors({
