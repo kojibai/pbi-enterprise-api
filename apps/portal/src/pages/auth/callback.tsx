@@ -29,7 +29,7 @@ export default function AuthCallback() {
         if (!res.ok) throw new Error("consume_failed");
 
         // Success → go to dashboard
-        router.replace("/");
+        router.replace("/console");
       } catch {
         setStatus("error");
       }

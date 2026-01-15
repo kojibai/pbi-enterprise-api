@@ -32,7 +32,7 @@ export default function BillingSuccess() {
           <Link href="/billing" style={btnGhostStyle}>
             View Billing
           </Link>
-          <Link href="/" style={btnGhostStyle}>
+          <Link href="/console" style={btnGhostStyle}>
             Dashboard
           </Link>
         </div>

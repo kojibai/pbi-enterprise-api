@@ -18,7 +18,7 @@ export default function BillingCanceled() {
           <Link href="/billing" style={btnPrimaryStyle}>
             Back to Billing
           </Link>
-          <Link href="/" style={btnGhostStyle}>
+          <Link href="/console" style={btnGhostStyle}>
             Dashboard
           </Link>
         </div>

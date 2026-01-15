@@ -117,7 +117,7 @@ export default function BillingIndex() {
           </div>
 
           <nav className="portalNav" aria-label="Portal navigation">
-            <Link href="/" className="portalNavLink">Dashboard</Link>
+            <Link href="/console" className="portalNavLink">Dashboard</Link>
             <Link href="/api-keys" className="portalNavLink">API Keys</Link>
             <Link href="/terms" className="portalNavLink">Terms</Link>
           </nav>
