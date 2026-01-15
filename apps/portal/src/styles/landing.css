@@ -565,3 +565,70 @@ body{ margin:0; }
   color: rgba(255,255,255,.74);
   border-top: 1px solid rgba(255,255,255,.08);
 }
+
+/* ===== Android right-edge overflow hardening ===== */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Never let any direct child expand the viewport */
+.pbi-landing {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* IMPORTANT: avoid any accidental "vw" overflow by constraining the shell */
+.pbi-shell {
+  width: min(1100px, 100%);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Grid/flex children must be allowed to shrink */
+.pbi-heroGrid,
+.pbi-sectionGrid3,
+.pbi-figGrid,
+.pbi-accessGrid {
+  min-width: 0;
+}
+
+.pbi-heroGrid > *,
+.pbi-sectionGrid3 > *,
+.pbi-figGrid > *,
+.pbi-accessGrid > * {
+  min-width: 0;
+}
+
+/* The right panel + any card content must not force width */
+.pbi-side,
+.pbi-card,
+.pbi-value,
+.pbi-proofStrip,
+.pbi-figure {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Code blocks are common culprits on Android */
+.pbi-code {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Images must never exceed container width */
+.pbi-figureImg,
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Nav row should scroll, not expand the page */
+.pbi-nav {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
