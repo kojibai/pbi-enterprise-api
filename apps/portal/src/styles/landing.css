@@ -260,6 +260,16 @@ body{ margin:0; }
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 16px;
 }
+.pbi-mailLink{
+  border: 0;
+  background: transparent;
+  color: rgba(120,255,231,.92);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 /* ======================
    HERO
 ====================== */

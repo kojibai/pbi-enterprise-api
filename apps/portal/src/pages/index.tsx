@@ -62,15 +62,28 @@ export default function HomePage() {
     }
   }
 
-  // ---------- SALES / PBI Assured MODAL (CALENDLY ONLY) ----------
+  // ---------- SALES / PBI ASSURED MODAL (INLINE CALENDLY) ----------
   const SALES_EMAIL = (process.env.NEXT_PUBLIC_PBI_SALES_EMAIL ?? "sales@kojib.com").trim();
   const SALES_CALENDLY = (process.env.NEXT_PUBLIC_PBI_SALES_CALENDLY_URL ?? DEFAULT_CALENDLY).trim();
 
+  const calendlyEmbedUrl = useMemo(() => {
+    const base = SALES_CALENDLY.replace(/\/+$/, "");
+    const hasQ = base.includes("?");
+    return `${base}${hasQ ? "&" : "?"}hide_event_type_details=1&hide_gdpr_banner=1`;
+  }, [SALES_CALENDLY]);
+
   const [salesOpen, setSalesOpen] = useState<boolean>(false);
   const [securityOpen, setSecurityOpen] = useState<boolean>(false);
+
+  // IMPORTANT: used to force Calendly to remount every time modal opens
+  const [calendlyKey, setCalendlyKey] = useState<number>(0);
+
   const salesPanelRef = useRef<HTMLDivElement | null>(null);
+  const calendlyHostRef = useRef<HTMLDivElement | null>(null);
 
   function openSales() {
+    // force a clean remount on every open
+    setCalendlyKey((k) => k + 1);
     setSalesOpen(true);
   }
 
@@ -82,6 +95,71 @@ export default function HomePage() {
   function emailSalesNow() {
     window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("PBI Assured — Schedule a call")}`;
   }
+
+  // Load Calendly widget script once (safe in Next.js)
+  useEffect(() => {
+    if (!salesOpen) return;
+
+    const SCRIPT_ID = "calendly-widget-js";
+    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) return;
+
+    const s = document.createElement("script");
+    s.id = SCRIPT_ID;
+    s.src = "https://assets.calendly.com/assets/external/widget.js";
+    s.async = true;
+    document.body.appendChild(s);
+  }, [salesOpen]);
+
+  // ALWAYS re-initialize Calendly widget on open (and on every remount)
+  useEffect(() => {
+    if (!salesOpen) return;
+
+    let cancelled = false;
+
+    function mountCalendly() {
+      if (cancelled) return;
+
+      const host = calendlyHostRef.current;
+      if (!host) return;
+
+      // Hard reset host every time
+      host.innerHTML = "";
+
+      const widget = document.createElement("div");
+      widget.className = "calendly-inline-widget";
+      widget.setAttribute("data-url", calendlyEmbedUrl);
+      widget.style.minWidth = "320px";
+      widget.style.height = "700px";
+      host.appendChild(widget);
+
+      // If Calendly global is available, explicitly init
+      const w = window as any;
+      if (w.Calendly && typeof w.Calendly.initInlineWidget === "function") {
+        try {
+          w.Calendly.initInlineWidget({
+            url: calendlyEmbedUrl,
+            parentElement: widget
+          });
+        } catch {
+          // no-op: widget.js may auto-init via DOM scan
+        }
+      }
+    }
+
+    // Try immediately + retry (script may still be loading)
+    mountCalendly();
+    const timers: number[] = [];
+    timers.push(window.setTimeout(mountCalendly, 120));
+    timers.push(window.setTimeout(mountCalendly, 350));
+    timers.push(window.setTimeout(mountCalendly, 800));
+    timers.push(window.setTimeout(mountCalendly, 1400));
+
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, [salesOpen, calendlyKey, calendlyEmbedUrl]);
 
   // Modal behaviors: ESC closes, click-outside closes, lock scroll.
   useEffect(() => {
@@ -290,10 +368,7 @@ POST /v1/pbi/verify     { assertion }
             </div>
 
             <div className="pbi-sectionGrid3" style={{ marginTop: 14 }}>
-              <InfoCard
-                title="1) Bind the action"
-                body="Hash what you’re about to do (transfer, rotate keys, deploy). Challenge is bound to that hash."
-              />
+              <InfoCard title="1) Bind the action" body="Hash what you’re about to do (transfer, rotate keys, deploy). Challenge is bound to that hash." />
               <InfoCard title="2) Prove presence (UP+UV)" body="User completes a live WebAuthn ceremony. No accounts required for the proof." />
               <InfoCard title="3) Enforce + store receipt" body="Proceed only on PBI_VERIFIED. Store receipt hash for audit, forensics, disputes." />
             </div>
@@ -413,7 +488,7 @@ POST /v1/pbi/verify     { assertion }
                     "Roadmap alignment for regulated environments"
                   ]}
                   ctaLabel="Schedule a call"
-                  ctaHref={SALES_CALENDLY}
+                  ctaOnClick={openSales}
                   featured
                 />
               </div>
@@ -496,9 +571,9 @@ POST /v1/pbi/verify     { assertion }
         </main>
       </div>
 
-      {/* ---------- SALES POPOVER MODAL (ONLY RENDERS WHEN OPEN) ---------- */}
+      {/* ---------- SALES POPOVER MODAL (INLINE CALENDLY EMBED) ---------- */}
       {salesOpen ? (
-        <div className="pbi-modal" role="dialog" aria-modal="true" aria-label="Talk to Sales">
+        <div className="pbi-modal" role="dialog" aria-modal="true" aria-label="PBI Assured — Schedule a call">
           <div className="pbi-modalBackdrop" aria-hidden />
 
           <div className="pbi-modalShell">
@@ -510,8 +585,7 @@ POST /v1/pbi/verify     { assertion }
                     Schedule a call
                   </div>
                   <div className="pbi-cardBody" style={{ marginTop: 8 }}>
-                    PBI Assured is for organizations where approvals must be <b>provable</b> — not just “logged.” Schedule a call and we’ll map
-                    your enforcement points, recommend capacity, and provide a security packet for reviewers.
+                    For regulated and mission-critical environments where approvals must be <b>provable</b> — not just logged.
                   </div>
                 </div>
 
@@ -521,25 +595,27 @@ POST /v1/pbi/verify     { assertion }
               </div>
 
               <div className="pbi-modalGrid">
+                {/* LEFT: Calendly host (we mount Calendly into this div every time) */}
                 <div className="pbi-card" style={{ background: "rgba(255,255,255,.06)" }}>
-                  <div className="pbi-proofLabel">Fastest path</div>
+                  <div className="pbi-proofLabel">Scheduling</div>
                   <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
-                    Book a time that works for you.
+                    Pick a time
                   </div>
                   <div className="pbi-cardBody" style={{ marginTop: 8 }}>
-                    Your intake form captures the details we need. You’ll get a direct response and a clear next step.
+                    Use the inline scheduler below. Your intake form captures the details we need.
                   </div>
 
-                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <a className="pbi-btnPrimary" href={SALES_CALENDLY} rel="noreferrer">
-                      Schedule Now →
-                    </a>
-                    <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
-                      Review API docs
-                    </a>
+                  <div style={{ marginTop: 12 }}>
+                    <div ref={calendlyHostRef} />
                   </div>
 
-                  <div className="pbi-secPack" style={{ marginTop: 12 }}>
+                </div>
+
+                {/* RIGHT: procurement-safe info + security packet */}
+                <div className="pbi-card" style={{ background: "rgba(0,0,0,.18)" }}>
+                  <div className="pbi-proofLabel">Security review</div>
+
+                  <div className="pbi-secPack" style={{ marginTop: 10 }}>
                     <button
                       className="pbi-secPackBtn"
                       type="button"
@@ -556,33 +632,23 @@ POST /v1/pbi/verify     { assertion }
                       <div className="pbi-secPackBody">
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Controls posture</div>
-                          <div className="pbi-secV">
-                            Control mappings and what evidence we can provide today (and what we do not claim).
-                          </div>
+                          <div className="pbi-secV">Control mappings and what evidence we can provide today (and what we do not claim).</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Data flow diagram</div>
-                          <div className="pbi-secV">
-                            What is sent, what is stored (receipts/metadata), and what is explicitly not stored.
-                          </div>
+                          <div className="pbi-secV">What is sent, what is stored (receipts/metadata), and what is explicitly not stored.</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Receipt retention</div>
-                          <div className="pbi-secV">
-                            Retention options, export strategy, and operational guidance for regulated audit windows.
-                          </div>
+                          <div className="pbi-secV">Retention options, export strategy, and guidance for regulated audit windows.</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Threat model</div>
-                          <div className="pbi-secV">
-                            Replay resistance, ceremony guarantees, and expected failure modes.
-                          </div>
+                          <div className="pbi-secV">Replay resistance, ceremony guarantees, and expected failure modes.</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Deployment notes</div>
-                          <div className="pbi-secV">
-                            Environment separation guidance, allowlisting, and integration patterns.
-                          </div>
+                          <div className="pbi-secV">Environment separation guidance, allowlisting, and integration patterns.</div>
                         </div>
 
                         <div className="pbi-proofLabel" style={{ marginTop: 10 }}>
@@ -592,34 +658,26 @@ POST /v1/pbi/verify     { assertion }
                     ) : null}
                   </div>
 
-                  <div className="pbi-proofLabel" style={{ marginTop: 12 }}>
-                    Prefer email?{" "}
-                    <a href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent("PBI Assured — Schedule a call")}`}>{SALES_EMAIL}</a>
-                  </div>
-                </div>
-
-                <div className="pbi-card" style={{ background: "rgba(0,0,0,.18)" }}>
-                  <div className="pbi-proofLabel">What we cover on the call</div>
-                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                    <ProofLine k="Enforcement points" v="Which endpoints/actions must be presence-gated (money, admin, governance, deploy)." />
-                    <ProofLine k="Capacity & rollout" v="Monthly volume, burst patterns, environments, and rollout sequencing." />
-                    <ProofLine k="Security review path" v="How receipts, retention, and verification work for auditors and incident response." />
-                    <ProofLine k="Commercials" v="PBI Assuredcapacity, support options, and procurement-friendly billing." />
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    <ProofLine k="Enforcement points" v="Which actions must be presence-gated (money, admin, governance, deploy)." />
+                    <ProofLine k="Capacity & rollout" v="Monthly volume, burst patterns, environments, rollout sequencing." />
+                    <ProofLine k="Commercials" v="Procurement-friendly onboarding and support options." />
                   </div>
 
-                  <div style={{ marginTop: 12 }}>
-                    <a className="pbi-btnPrimary" href={SALES_CALENDLY} rel="noreferrer" style={{ width: "100%", justifyContent: "center" }}>
-                      Schedule now →
+                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                      Review API docs
                     </a>
                   </div>
                 </div>
               </div>
 
               <div className="pbi-modalFoot">
-                <div className="pbi-proofLabel">By scheduling, you agree to be contacted about PBI Assured. No spam — just a real response.</div>
-                <button className="pbi-btnGhost" type="button" onClick={closeSales}>
-                  Close
-                </button>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button className="pbi-btnGhost" type="button" onClick={closeSales}>
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
