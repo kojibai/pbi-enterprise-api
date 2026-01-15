@@ -10,7 +10,7 @@ info:
     - meters usage and exposes invoices
 
 servers:
-  - url: https://api.yourdomain.com
+  - url: https://api.kojib.com
   - url: http://localhost:8080
 
 components:
