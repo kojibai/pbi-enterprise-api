@@ -2,16 +2,19 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import cookieParser from "cookie-parser";
+
 import { logger } from "./util/logger.js";
 import { requestId } from "./middleware/requestId.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { apiKeyAuth } from "./middleware/apiKeyAuth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import cookieParser from "cookie-parser";
-import { portalRouter } from "./routes/portal.js";
-import { stripeRouter } from "./routes/stripe.js";
+
 import { publicRouter } from "./routes/public.js";
 import { healthRouter } from "./routes/health.js";
+import { portalRouter } from "./routes/portal.js";
+import { stripeRouter } from "./routes/stripe.js";
+
 import { pbiRouter } from "./routes/pbi.js";
 import { billingRouter } from "./routes/billing.js";
 import { adminRouter } from "./routes/admin.js";
@@ -22,70 +25,68 @@ export function makeApp() {
   app.use(pinoHttp({ logger }));
   app.use(requestId);
   app.use(rateLimit);
-app.use(cookieParser());
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        "default-src": ["'self'"],
 
-        // Allow Redoc CDN + our local /redoc-init.js + allow blob workers
-        "script-src": ["'self'", "https://cdn.redoc.ly", "blob:"],
+  // Cookies for portal sessions
+  app.use(cookieParser());
 
-        // Workers for Redoc (Safari fix)
-        "worker-src": ["'self'", "blob:"],
+  // Helmet + CSP (supports Redoc on mobile via blob workers)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          "default-src": ["'self'"],
 
-        // Some browsers still consult child-src for workers
-        "child-src": ["'self'", "blob:"],
+          // Redoc CDN + blob workers
+          "script-src": ["'self'", "https://cdn.redoc.ly", "blob:"],
+          "worker-src": ["'self'", "blob:"],
+          "child-src": ["'self'", "blob:"],
 
-        // CSS (Swagger uses inline style blocks sometimes)
-        "style-src": ["'self'", "https:", "'unsafe-inline'"],
+          // Swagger uses inline styles
+          "style-src": ["'self'", "https:", "'unsafe-inline'"],
 
-        // Redoc fonts/icons
-        "font-src": ["'self'", "https:", "data:"],
+          // Fonts/images
+          "font-src": ["'self'", "https:", "data:"],
+          "img-src": ["'self'", "data:"],
 
-        // Images
-        "img-src": ["'self'", "data:"],
-
-        // XHR/fetch (Redoc fetching /openapi.yaml is same-origin)
-        "connect-src": ["'self'"]
+          // API calls (portal->api is cross-origin; include portal origin)
+          // NOTE: connect-src controls browser fetch/XHR from pages served by THIS origin.
+          // Keeping 'self' is fine since portal is a different origin; this CSP mainly affects /docs + /redoc here.
+          "connect-src": ["'self'"]
+        }
       }
-    }
-  })
-);
-const allowedOrigins = new Set<string>([
-  "https://portal.kojib.com",
-  "http://localhost:3000"
-]);
+    })
+  );
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // allow server-to-server or same-origin with no Origin header
-      if (!origin) return cb(null, true);
-      return cb(null, allowedOrigins.has(origin));
-    },
-    credentials: true
-  })
-);
+  // CORS for portal (credentials required for cookies)
+  const allowedOrigins = new Set<string>(["https://portal.kojib.com", "http://localhost:3000"]);
+
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        return cb(null, allowedOrigins.has(origin));
+      },
+      credentials: true
+    })
+  );
 
   app.use(express.json({ limit: "1mb" }));
 
-  // ✅ Public routes FIRST (/, /docs, /openapi.yaml, /favicon, etc.)
+  // Public UI/docs + health
   app.use("/", publicRouter);
-
-  // ✅ Health public
   app.use("/", healthRouter);
 
-  // ✅ Protected API
-  app.use("/v1", apiKeyAuth);
-  app.use("/v1/pbi", pbiRouter);
-  app.use("/v1/billing", billingRouter);
-  app.use("/v1/admin", adminRouter);
-app.use("/v1/portal", portalRouter);
-app.use("/v1/stripe", stripeRouter);
-  // ✅ Explicit 404 JSON (prevents "Cannot GET /" surprises)
+  // ✅ Portal + Stripe must be PUBLIC (no API key)
+  app.use("/v1/portal", portalRouter);
+  app.use("/v1/stripe", stripeRouter);
+
+  // ✅ Only machine endpoints require API key
+  app.use("/v1/pbi", apiKeyAuth, pbiRouter);
+  app.use("/v1/billing", apiKeyAuth, billingRouter);
+  app.use("/v1/admin", apiKeyAuth, adminRouter);
+
+  // Explicit 404
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });
   });
