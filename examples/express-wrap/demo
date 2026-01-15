@@ -1,0 +1,65 @@
+import express from "express";
+
+type PbiVerifyOk = {
+  ok: true;
+  decision: "PBI_VERIFIED";
+  receiptId: string;
+  receiptHashHex: string;
+};
+
+type PbiVerifyFail = {
+  ok: boolean;
+  decision: "FAILED" | "EXPIRED" | "REPLAYED";
+  reason?: string;
+};
+
+type PbiVerifyResponse = PbiVerifyOk | PbiVerifyFail;
+
+async function verifyPbiOrThrow(pbiApiBase: string, pbiApiKey: string, body: unknown): Promise<PbiVerifyOk> {
+  const r = await fetch(`${pbiApiBase}/v1/pbi/verify`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${pbiApiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+  const json = (await r.json()) as PbiVerifyResponse;
+  if (!json.ok || json.decision !== "PBI_VERIFIED") {
+    const reason = "reason" in json && typeof json.reason === "string" ? json.reason : "pbi_failed";
+    throw new Error(`${json.decision}:${reason}`);
+  }
+  return json;
+}
+
+const app = express();
+app.use(express.json());
+
+app.post("/transfer/commit", async (req, res) => {
+  // policy: require PBI for transfers >= $X (your risk engine goes here)
+  const requiresPbi = true;
+
+  if (requiresPbi) {
+    try {
+      const pbiBundle = req.body?.pbi; // enterprise convention: client includes { pbi: {challengeId, assertion} }
+      const verified = await verifyPbiOrThrow(
+        process.env.PBI_API_BASE ?? "http://localhost:8080",
+        process.env.PBI_API_KEY ?? "",
+        pbiBundle
+      );
+
+      // record the receipt hash into your audit log / transaction row
+      // tx.pbi_receipt_hash = verified.receiptHashHex
+      void verified;
+
+    } catch (e: unknown) {
+      res.status(403).json({ error: "presence_required_or_failed" });
+      return;
+    }
+  }
+
+  // commit the transfer
+  res.json({ ok: true });
+});
+
+app.listen(3000);

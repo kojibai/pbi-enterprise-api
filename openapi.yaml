@@ -1,0 +1,220 @@
+openapi: 3.0.3
+info:
+  title: PBI Enterprise API
+  version: 1.0.0
+  description: |
+    Presence-Bound Identity (PBI) enterprise API:
+    - issues action/artifact-bound challenges
+    - verifies WebAuthn assertion bundles (UP+UV required)
+    - emits receipts
+    - meters usage and exposes invoices
+
+servers:
+  - url: https://api.yourdomain.com
+  - url: http://localhost:8080
+
+components:
+  securitySchemes:
+    ApiKeyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: API_KEY
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    PBIChallenge:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeB64Url: { type: string }
+        purpose:
+          type: string
+          enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
+        actionHashHex: { type: string, pattern: "^[0-9a-f]{64}$" }
+        expiresAtIso: { type: string, format: date-time }
+      required: [id, challengeB64Url, purpose, actionHashHex, expiresAtIso]
+
+    ChallengeRequest:
+      type: object
+      properties:
+        purpose:
+          type: string
+          enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
+        actionHashHex:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        ttlSeconds:
+          type: integer
+          minimum: 10
+          maximum: 600
+          default: 120
+      required: [purpose, actionHashHex]
+
+    ChallengeResponse:
+      type: object
+      properties:
+        challenge:
+          $ref: "#/components/schemas/PBIChallenge"
+      required: [challenge]
+
+    WebAuthnAssertionBundle:
+      type: object
+      properties:
+        authenticatorDataB64Url: { type: string }
+        clientDataJSONB64Url: { type: string }
+        signatureB64Url: { type: string }
+        credIdB64Url: { type: string }
+        pubKeyPem: { type: string, description: "PEM encoded P-256 public key for verification (enterprise mode without enrollment)" }
+      required: [authenticatorDataB64Url, clientDataJSONB64Url, signatureB64Url, credIdB64Url, pubKeyPem]
+
+    VerifyRequest:
+      type: object
+      properties:
+        challengeId: { type: string, format: uuid }
+        assertion:
+          $ref: "#/components/schemas/WebAuthnAssertionBundle"
+      required: [challengeId, assertion]
+
+    VerifyResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        decision:
+          type: string
+          enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
+        reason:
+          type: string
+          nullable: true
+        receiptId: { type: string, format: uuid, nullable: true }
+        receiptHashHex: { type: string, nullable: true }
+        challenge:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            purpose:
+              type: string
+              enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
+            actionHashHex: { type: string, pattern: "^[0-9a-f]{64}$" }
+          required: [id, purpose, actionHashHex]
+      required: [ok, decision]
+
+    UsageResponse:
+      type: object
+      properties:
+        month: { type: string, example: "2026-01" }
+        usage:
+          type: object
+          properties:
+            challenge: { type: string, example: "123" }
+            verify: { type: string, example: "120" }
+          required: [challenge, verify]
+      required: [month, usage]
+
+    InvoicesResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              month: { type: string }
+              status: { type: string, enum: [open, final, paid] }
+              totalCents: { type: string }
+              lineItems: { type: object }
+              createdAt: { type: string, format: date-time }
+              finalizedAt: { type: string, format: date-time, nullable: true }
+            required: [id, month, status, totalCents, lineItems, createdAt]
+      required: [invoices]
+
+security:
+  - ApiKeyBearer: []
+
+paths:
+  /health:
+    get:
+      security: []
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+
+  /v1/pbi/challenge:
+    post:
+      summary: Create a PBI challenge bound to an action/artifact hash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChallengeRequest" }
+      responses:
+        "200":
+          description: Challenge created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChallengeResponse" }
+        "401":
+          description: Missing API key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Invalid API key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/pbi/verify:
+    post:
+      summary: Verify a WebAuthn assertion against a stored challenge and issue a receipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyRequest" }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerifyResponse" }
+        "400":
+          description: Failed / expired / replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerifyResponse" }
+
+  /v1/billing/usage:
+    get:
+      summary: Usage for current or requested month
+      parameters:
+        - in: query
+          name: month
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+      responses:
+        "200":
+          description: Usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsageResponse" }
+
+  /v1/billing/invoices:
+    get:
+      summary: List recent invoices
+      responses:
+        "200":
+          description: Invoices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvoicesResponse" }
+              

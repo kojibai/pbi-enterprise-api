@@ -1,0 +1,112 @@
+use axum::{
+    async_trait,
+    extract::{FromRequestParts, State},
+    http::{request::Parts, StatusCode},
+    response::IntoResponse,
+    routing::post,
+    Json, Router,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone)]
+struct AppState {
+    pbi_api_base: String,
+    pbi_api_key: String,
+    http: reqwest::Client,
+}
+
+#[derive(Deserialize)]
+struct PbiBundle {
+    challengeId: String,
+    assertion: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct TransferCommitReq {
+    // ... your fields ...
+    pbi: Option<PbiBundle>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum PbiVerifyResp {
+    Ok {
+        ok: bool,
+        decision: String,
+        receiptId: String,
+        receiptHashHex: String,
+    },
+    Fail {
+        ok: bool,
+        decision: String,
+        reason: Option<String>,
+    },
+}
+
+struct VerifiedPbi {
+    receipt_hash_hex: String,
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for VerifiedPbi {
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+        // We can’t read JSON body from Parts; the clean axum pattern is:
+        // parse body in handler, then call a verifier function.
+        // So this extractor is shown as a pattern placeholder. Use verifier fn below.
+        let _ = (parts, state);
+        Err((StatusCode::INTERNAL_SERVER_ERROR, "use verifier function in handler"))
+    }
+}
+
+async fn verify_pbi(state: &AppState, pbi: &PbiBundle) -> Result<String, ()> {
+    let url = format!("{}/v1/pbi/verify", state.pbi_api_base);
+    let resp = state
+        .http
+        .post(url)
+        .header("authorization", format!("Bearer {}", state.pbi_api_key))
+        .json(pbi)
+        .send()
+        .await
+        .map_err(|_| ())?;
+
+    let json: PbiVerifyResp = resp.json().await.map_err(|_| ())?;
+
+    match json {
+        PbiVerifyResp::Ok { ok, decision, receiptHashHex, .. } if ok && decision == "PBI_VERIFIED" => {
+            Ok(receiptHashHex)
+        }
+        _ => Err(()),
+    }
+}
+
+#[derive(Serialize)]
+struct OkResp {
+    ok: bool,
+    pbi_receipt: String,
+}
+
+async fn transfer_commit(
+    State(state): State<AppState>,
+    Json(req): Json<TransferCommitReq>,
+) -> impl IntoResponse {
+    let pbi = match req.pbi.as_ref() {
+        Some(v) => v,
+        None => return (StatusCode::FORBIDDEN, "presence_required").into_response(),
+    };
+
+    let receipt = match verify_pbi(&state, pbi).await {
+        Ok(r) => r,
+        Err(_) => return (StatusCode::FORBIDDEN, "presence_failed").into_response(),
+    };
+
+    // store receipt in your tx/audit log
+    (StatusCode::OK, Json(OkResp { ok: true, pbi_receipt: receipt })).into_response()
+}
+
+pub fn router(state: AppState) -> Router {
+    Router::new()
+        .route("/transfer/commit", post(transfer_commit))
+        .with_state(state)
+}
