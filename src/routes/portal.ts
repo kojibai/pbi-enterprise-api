@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
+import { Resend } from "resend";
 import { pool } from "../db/pool.js";
 import type { PortalAuthedRequest } from "../middleware/portalSession.js";
 import { requirePortalSession } from "../middleware/portalSession.js";
@@ -11,6 +12,28 @@ export const portalRouter = Router();
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
 const COOKIE_DOMAIN = process.env.PORTAL_COOKIE_DOMAIN ?? "localhost";
 const COOKIE_SECURE = (process.env.PORTAL_COOKIE_SECURE ?? "false") === "true";
+
+type EmailMode = "log" | "resend";
+
+function getEmailMode(): EmailMode {
+  const v = (process.env.EMAIL_MODE ?? "log").toLowerCase();
+  return v === "resend" ? "resend" : "log";
+}
+
+function mustGet(name: string): string {
+  const v = process.env[name];
+  if (!v || v.trim().length === 0) throw new Error(`Missing env var: ${name}`);
+  return v;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 function sha256Hex(s: string): string {
   return createHash("sha256").update(s, "utf8").digest("hex");
@@ -25,22 +48,71 @@ function mintRawApiKey(): string {
   return `pbi_live_${rnd}`;
 }
 
-/**
- * EMAIL SENDER:
- * Replace this with Resend/SES/Postmark. For now we keep a minimal hook:
- * - In production, implement sendEmail() using your provider.
- */
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const mode = process.env.EMAIL_MODE ?? "log";
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+type EmailSendResult = { ok: true } | { ok: false; error: string };
+
+async function sendEmail(to: string, subject: string, html: string): Promise<EmailSendResult> {
+  const mode = getEmailMode();
+
   if (mode === "log") {
     // eslint-disable-next-line no-console
     console.log({ to, subject, html }, "EMAIL_LOG");
-    return;
+    return { ok: true };
   }
-  throw new Error("EMAIL_MODE not implemented (set EMAIL_MODE=log or implement provider)");
+
+  // Never throw on config — return a clean error
+  let apiKey = "";
+  let from = "";
+  try {
+    apiKey = mustGet("RESEND_API_KEY");
+    from = mustGet("EMAIL_FROM");
+  } catch (e: unknown) {
+    // eslint-disable-next-line no-console
+    console.error("sendEmail config missing", e);
+    return { ok: false, error: "email_not_configured" };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const safeSubject = subject.trim().slice(0, 140);
+    const text = htmlToText(html);
+
+    const result = await resend.emails.send({
+      from,
+      to: [to],
+      subject: safeSubject,
+      html,
+      text
+    });
+
+    const err = (result as unknown as { error?: { message?: string } }).error;
+    if (err) {
+      const msg = err.message ?? "unknown_error";
+      // eslint-disable-next-line no-console
+      console.error("Resend send failed", { msg });
+      return { ok: false, error: `resend_failed:${msg}` };
+    }
+
+    return { ok: true };
+  } catch (e: unknown) {
+    // eslint-disable-next-line no-console
+    console.error("Resend exception", e);
+    return { ok: false, error: "resend_exception" };
+  }
 }
 
-// Start magic link
+// -------------------------
+// AUTH: Start magic link
+// -------------------------
 portalRouter.post("/auth/start", async (req, res) => {
   const Body = z.object({ email: z.string().email() });
   const { email } = Body.parse(req.body);
@@ -72,17 +144,59 @@ portalRouter.post("/auth/start", async (req, res) => {
   );
 
   const link = `${PORTAL_BASE_URL}/auth/callback?token=${encodeURIComponent(rawToken)}`;
+  const prettyLink = escapeHtml(link);
+  const safeEmail = escapeHtml(email);
 
-  await sendEmail(
-    email,
-    "Your PBI Portal sign-in link",
-    `<p>Click to sign in:</p><p><a href="${link}">${link}</a></p><p>This link expires in 15 minutes.</p>`
-  );
+  const html = `
+    <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#05070e; padding:24px;">
+      <div style="max-width:560px; margin:0 auto; border:1px solid rgba(255,255,255,.14); border-radius:18px; background:rgba(255,255,255,.06); padding:18px;">
+        <div style="color:#ffffff; font-weight:800; font-size:16px; letter-spacing:.2px;">PBI Client Portal</div>
+        <div style="color:rgba(255,255,255,.78); margin-top:6px; line-height:1.45; font-size:13px;">
+          Sign in to manage your API keys, usage, and billing.
+        </div>
+
+        <div style="margin-top:14px;">
+          <a href="${prettyLink}"
+             style="display:inline-block; padding:12px 14px; border-radius:14px; text-decoration:none; color:#05070e; background:#78ffe7; font-weight:800;">
+            Sign in
+          </a>
+        </div>
+
+        <div style="color:rgba(255,255,255,.72); margin-top:14px; font-size:12px; line-height:1.45;">
+          This link expires in <b>15 minutes</b> and can only be used once.
+        </div>
+
+        <div style="margin-top:10px; color:rgba(255,255,255,.55); font-size:11px;">
+          If you didn’t request this, you can ignore this email.
+        </div>
+
+        <hr style="border:none; border-top:1px solid rgba(255,255,255,.10); margin:14px 0;" />
+
+        <div style="color:rgba(255,255,255,.55); font-size:11px;">
+          Requested for: ${safeEmail}
+        </div>
+
+        <div style="margin-top:8px; color:rgba(255,255,255,.55); font-size:11px; word-break:break-all;">
+          Or paste this URL:<br/>
+          <span style="color:rgba(255,255,255,.86);">${prettyLink}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // IMPORTANT: do not leak whether email exists; always respond ok
+  const r = await sendEmail(email, "Your PBI Portal sign-in link", html);
+  if (!r.ok) {
+    // eslint-disable-next-line no-console
+    console.error("sendEmail failed", { error: r.error, email });
+  }
 
   res.json({ ok: true });
 });
 
-// Consume magic link -> create session cookie
+// -------------------------
+// AUTH: Consume magic link -> session cookie
+// -------------------------
 portalRouter.post("/auth/consume", async (req, res) => {
   const Body = z.object({ token: z.string().min(10) });
   const { token } = Body.parse(req.body);
@@ -105,10 +219,8 @@ portalRouter.post("/auth/consume", async (req, res) => {
 
   const row = r.rows[0] as { id: string; customer_id: string };
 
-  // Mark used
   await pool.query(`UPDATE portal_magic_links SET used_at=now() WHERE id=$1`, [row.id]);
 
-  // Create session
   const sid = randomUUID();
   await pool.query(
     `INSERT INTO portal_sessions (id, customer_id, expires_at)
@@ -127,7 +239,9 @@ portalRouter.post("/auth/consume", async (req, res) => {
   res.json({ ok: true });
 });
 
-// Logout
+// -------------------------
+// AUTH: Logout
+// -------------------------
 portalRouter.post("/auth/logout", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const sid = (req as unknown as { cookies?: Record<string, string> }).cookies?.pbi_portal_session;
   if (typeof sid === "string" && sid.length > 0) {
@@ -137,7 +251,9 @@ portalRouter.post("/auth/logout", requirePortalSession, async (req: PortalAuthed
   res.json({ ok: true });
 });
 
-// Me
+// -------------------------
+// ME
+// -------------------------
 portalRouter.get("/me", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   res.json({
     customer: {
@@ -149,7 +265,9 @@ portalRouter.get("/me", requirePortalSession, async (req: PortalAuthedRequest, r
   });
 });
 
-// List keys (never return raw)
+// -------------------------
+// API KEYS
+// -------------------------
 portalRouter.get("/api-keys", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const rows = await pool.query(
     `SELECT id, label, plan, quota_per_month, is_active, created_at
@@ -163,7 +281,6 @@ portalRouter.get("/api-keys", requirePortalSession, async (req: PortalAuthedRequ
   res.json({ apiKeys: rows.rows });
 });
 
-// Create key (return raw once)
 portalRouter.post("/api-keys", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const Body = z.object({ label: z.string().min(1).max(60).default("Portal Key") });
   const { label } = Body.parse(req.body);
@@ -181,22 +298,22 @@ portalRouter.post("/api-keys", requirePortalSession, async (req: PortalAuthedReq
   res.json({ ok: true, apiKeyId: id, rawApiKey: raw });
 });
 
-// Revoke key
 portalRouter.delete("/api-keys/:id", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const keyId = String(req.params.id);
-  await pool.query(
-    `UPDATE api_keys SET is_active=FALSE WHERE id=$1 AND customer_id=$2`,
-    [keyId, req.portalCustomer!.id]
-  );
+  await pool.query(`UPDATE api_keys SET is_active=FALSE WHERE id=$1 AND customer_id=$2`, [
+    keyId,
+    req.portalCustomer!.id
+  ]);
   res.json({ ok: true });
 });
 
-// Usage (reuse your existing usage_events)
+// -------------------------
+// USAGE
+// -------------------------
 portalRouter.get("/usage", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const month = String(req.query.month ?? "");
   const mk = /^\d{4}-\d{2}$/.test(month) ? month : null;
 
-  // sum usage for all api_keys belonging to customer
   const q = await pool.query(
     `SELECT ue.month_key, ue.kind, COALESCE(SUM(ue.units),0)::bigint AS total
      FROM usage_events ue
@@ -211,7 +328,9 @@ portalRouter.get("/usage", requirePortalSession, async (req: PortalAuthedRequest
   res.json({ rows: q.rows });
 });
 
-// Invoices (reuse your invoices table if you’re generating them)
+// -------------------------
+// INVOICES
+// -------------------------
 portalRouter.get("/invoices", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const q = await pool.query(
     `SELECT i.id, i.month_key, i.status, i.total_cents, i.line_items_json, i.created_at, i.finalized_at
