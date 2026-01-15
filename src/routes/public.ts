@@ -12,6 +12,10 @@ function loadSpec(): { yamlText: string; spec: object } {
   const spec = YAML.parse(yamlText) as object;
   return { yamlText, spec };
 }
+publicRouter.get("/favicon.ico", (_req, res) => {
+  // 204 = No Content (clean, no console error)
+  res.status(204).end();
+});
 
 publicRouter.get("/openapi.yaml", (_req, res) => {
   const { yamlText } = loadSpec();
