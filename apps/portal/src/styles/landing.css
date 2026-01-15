@@ -604,6 +604,22 @@ body{ margin:0; }
   line-height: 1.45;
   color: rgba(255,255,255,.72);
 }
+
+.pbi-heroVideoAspect { position: relative; width: 100%; padding-top: 56.25%; }
+.pbi-heroVideoSound{
+  position:absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(0,0,0,.35);
+  color: rgba(255,255,255,.92);
+  font-weight: 800;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 /* ===== Android right-edge overflow hardening ===== */
 html, body {
   width: 100%;

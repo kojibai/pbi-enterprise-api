@@ -117,11 +117,12 @@ export default function HomePage() {
     <div className="pbi-heroVideoAspect">
       <iframe
         className="pbi-heroVideoIframe"
-        src="https://www.youtube-nocookie.com/embed/73HYFF1Jlco?autoplay=1&mute=1&loop=1&playlist=73HYFF1Jlco&controls=1&modestbranding=1&rel=0&playsinline=1"
+        src="https://www.youtube-nocookie.com/embed/73HYFF1Jlco?autoplay=0&mute=0&loop=1&playlist=73HYFF1Jlco&controls=1&modestbranding=1&rel=0&playsinline=1"
         title="PBI Intro"
         allow="autoplay; encrypted-media; picture-in-picture"
         allowFullScreen
       />
+      
     </div>
   </div>
 
