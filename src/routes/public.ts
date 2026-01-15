@@ -153,7 +153,6 @@ publicRouter.get("/", (_req, res) => {
         <div class="card">
           <div class="k">Docs</div>
           <div class="links">
-            <a class="btn" href="/docs">Swagger UI</a>
             <a class="btn" href="/redoc">Redoc</a>
             <a class="btn" href="/health">Health</a>
           </div>
@@ -340,11 +339,30 @@ publicRouter.use("/docs", (req, res, next) => {
       customSiteTitle: "PBI Enterprise API Docs",
       swaggerOptions: { persistAuthorization: true },
 customCss: `
-  /* Base */
+  /* =========================
+     GLOBAL DARK BASE
+  ========================== */
   html, body { background: #05070e !important; }
-  .swagger-ui, .swagger-ui * { color: rgba(255,255,255,.92) !important; }
+  .swagger-ui { color: rgba(255,255,255,.92) !important; }
+  .swagger-ui * { color: rgba(255,255,255,.92) !important; }
 
-  /* Top bar */
+  /* Readable secondary text */
+  .swagger-ui .info p,
+  .swagger-ui .info li,
+  .swagger-ui .opblock-description-wrapper p,
+  .swagger-ui .markdown p,
+  .swagger-ui .markdown li,
+  .swagger-ui .parameter__name,
+  .swagger-ui .parameter__type,
+  .swagger-ui .opblock-summary-description,
+  .swagger-ui .response-col_status,
+  .swagger-ui .response-col_description {
+    color: rgba(255,255,255,.82) !important;
+  }
+
+  /* =========================
+     TOPBAR + CONTAINERS
+  ========================== */
   .swagger-ui .topbar {
     background: rgba(0,0,0,.35) !important;
     border-bottom: 1px solid rgba(255,255,255,.12) !important;
@@ -352,7 +370,16 @@ customCss: `
     -webkit-backdrop-filter: blur(14px);
   }
 
-  /* Cards / blocks */
+  .swagger-ui .scheme-container {
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35) !important;
+  }
+
+  /* =========================
+     OPERATION BLOCKS
+  ========================== */
   .swagger-ui .opblock {
     background: rgba(255,255,255,.05) !important;
     border: 1px solid rgba(255,255,255,.12) !important;
@@ -363,7 +390,6 @@ customCss: `
     border-bottom: 1px solid rgba(255,255,255,.10) !important;
   }
 
-  /* Titles / headings */
   .swagger-ui .info .title,
   .swagger-ui .info h1,
   .swagger-ui .info h2,
@@ -373,21 +399,14 @@ customCss: `
     color: #ffffff !important;
   }
 
-  /* Description text */
-  .swagger-ui .info p,
-  .swagger-ui .info li,
-  .swagger-ui .opblock-description-wrapper p,
-  .swagger-ui .markdown p,
-  .swagger-ui .markdown li {
-    color: rgba(255,255,255,.84) !important;
-  }
-
-  /* Auth box / inputs */
+  /* =========================
+     INPUTS / SELECTS
+  ========================== */
   .swagger-ui input[type="text"],
   .swagger-ui input[type="password"],
   .swagger-ui input[type="search"],
-  .swagger-ui select,
-  .swagger-ui textarea {
+  .swagger-ui textarea,
+  .swagger-ui select {
     background: rgba(0,0,0,.30) !important;
     border: 1px solid rgba(255,255,255,.16) !important;
     color: #ffffff !important;
@@ -399,7 +418,9 @@ customCss: `
     color: rgba(255,255,255,.55) !important;
   }
 
-  /* Code blocks */
+  /* =========================
+     CODE BLOCKS
+  ========================== */
   .swagger-ui .highlight-code,
   .swagger-ui pre,
   .swagger-ui code {
@@ -409,7 +430,9 @@ customCss: `
     border-radius: 12px !important;
   }
 
-  /* Buttons */
+  /* =========================
+     BUTTONS
+  ========================== */
   .swagger-ui .btn {
     border-radius: 12px !important;
     border: 1px solid rgba(255,255,255,.16) !important;
@@ -420,42 +443,87 @@ customCss: `
     background: rgba(255,255,255,.08) !important;
   }
 
-  /* Make the "Authorize" + scheme container match */
-  .swagger-ui .scheme-container {
-    background: rgba(255,255,255,.06) !important;
-    border: 1px solid rgba(255,255,255,.12) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 10px 28px rgba(0,0,0,.35) !important;
-  }
-
-  /* Ensure badges/tags are readable */
+  /* =========================
+     HTTP METHOD BADGES
+  ========================== */
   .swagger-ui .opblock-summary-method { color: #05070e !important; }
   .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #9aaaff !important; }
   .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #78ffe7 !important; }
   .swagger-ui .opblock.opblock-put .opblock-summary-method { background: #ffd38a !important; }
   .swagger-ui .opblock.opblock-delete .opblock-summary-method { background: #ff8aa0 !important; }
-/* Response tabs: selected tab has white bg -> must be dark text */
-.swagger-ui .tab li,
-.swagger-ui .tab li button {
-  color: rgba(255,255,255,.88) !important;
-  background: rgba(255,255,255,.06) !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
-  border-radius: 12px !important;
-}
 
-.swagger-ui .tab li.active,
-.swagger-ui .tab li.active button {
-  background: #ffffff !important;
-  border-color: rgba(255,255,255,.22) !important;
-  color: #05070e !important;           /* ✅ dark text on white */
-}
-
-.swagger-ui .tab li.active span,
-.swagger-ui .tab li.active button span {
-  color: #05070e !important;           /* ✅ any inner span text */
-}
-  /* Links */
+  /* =========================
+     LINKS
+  ========================== */
   .swagger-ui a { color: #78ffe7 !important; }
+
+  /* =========================================================
+     HARD GUARANTEE:
+     Nothing "active/selected" turns white. Active = teal glass.
+  ========================================================== */
+
+  /* Tabs (generic) */
+  .swagger-ui .tab li,
+  .swagger-ui .tab li button {
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    border-radius: 12px !important;
+    color: rgba(255,255,255,.92) !important;
+  }
+  .swagger-ui .tab li.active,
+  .swagger-ui .tab li.active button {
+    background: rgba(120,255,231,.18) !important;
+    border-color: rgba(120,255,231,.38) !important;
+    box-shadow: 0 0 0 4px rgba(120,255,231,.10) !important;
+    color: #ffffff !important;
+  }
+  .swagger-ui .tab li.active *,
+  .swagger-ui .tab li.active button * {
+    color: #ffffff !important;
+  }
+
+  /* Response code chips (THIS is your screenshot: 200 / 401 / 403) */
+  .swagger-ui .responses-table .response-col_status .response {
+    background: rgba(255,255,255,.06) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    border-radius: 12px !important;
+    color: rgba(255,255,255,.92) !important;
+  }
+  .swagger-ui .responses-table .response-col_status .response.active,
+  .swagger-ui .responses-table .response-col_status .response.selected {
+    background: rgba(120,255,231,.18) !important;
+    border-color: rgba(120,255,231,.38) !important;
+    box-shadow: 0 0 0 4px rgba(120,255,231,.10) !important;
+    color: #ffffff !important;
+  }
+  .swagger-ui .responses-table .response-col_status .response.active *,
+  .swagger-ui .responses-table .response-col_status .response.selected * {
+    color: #ffffff !important;
+  }
+
+  /* Authorize modal (avoid any white panels) */
+  .swagger-ui .modal-ux {
+    background: rgba(10,12,20,.95) !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: 18px !important;
+  }
+  .swagger-ui .modal-ux * { color: rgba(255,255,255,.92) !important; }
+
+  /* Generic “active/selected” button-like states */
+  .swagger-ui button.active,
+  .swagger-ui .btn.active,
+  .swagger-ui .selected,
+  .swagger-ui .is-active {
+    background: rgba(120,255,231,.18) !important;
+    border-color: rgba(120,255,231,.38) !important;
+    color: #ffffff !important;
+  }
+  .swagger-ui button.active *,
+  .swagger-ui .btn.active *,
+  .swagger-ui .selected *,
+  .swagger-ui .is-active * {
+    color: #ffffff !important;
+  }
 `
     });
 

@@ -26,10 +26,28 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        // Keep your existing strictness but allow Redoc CDN
-        "script-src": ["'self'", "https://cdn.redoc.ly"],
+        "default-src": ["'self'"],
+
+        // Allow Redoc CDN + our local /redoc-init.js + allow blob workers
+        "script-src": ["'self'", "https://cdn.redoc.ly", "blob:"],
+
+        // Workers for Redoc (Safari fix)
+        "worker-src": ["'self'", "blob:"],
+
+        // Some browsers still consult child-src for workers
+        "child-src": ["'self'", "blob:"],
+
+        // CSS (Swagger uses inline style blocks sometimes)
         "style-src": ["'self'", "https:", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:"]
+
+        // Redoc fonts/icons
+        "font-src": ["'self'", "https:", "data:"],
+
+        // Images
+        "img-src": ["'self'", "data:"],
+
+        // XHR/fetch (Redoc fetching /openapi.yaml is same-origin)
+        "connect-src": ["'self'"]
       }
     }
   })
