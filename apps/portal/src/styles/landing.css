@@ -90,31 +90,27 @@ body{ margin:0; }
 }
 
 /* ======================
-   TOP BAR (PERFECT MOBILE)
-   - one line always
-   - nav scrolls horizontally
-   - never overlaps brand
+   TOP BAR — FINAL
+   Desktop: brand left, nav right
+   Mobile: brand row + nav row (nav stays ONE LINE, scrolls)
 ====================== */
 
 .pbi-topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
   gap: 10px;
-  flex-wrap: nowrap;
-  padding: 6px 0 10px;
+  padding: 6px 0 12px;
 }
 
-/* Brand can shrink */
+/* Brand */
 .pbi-brand{
   display:flex;
   align-items:center;
   gap: 12px;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
-/* Logo */
 .pbi-mark{
   width: 42px;
   height: 42px;
@@ -151,42 +147,39 @@ body{ margin:0; }
   box-shadow: 0 0 0 6px rgba(120,255,231,.10), 0 0 26px rgba(120,255,231,.22);
 }
 
-/* Brand text */
+/* Brand text block */
+.pbi-brand > div{
+  min-width: 0;
+}
+
 .pbi-brandTitle{
   font-weight: 900;
   letter-spacing: .24px;
   font-size: 13px;
   white-space: nowrap;
+  line-height: 1.1;
 }
+
 .pbi-brandSub{
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 11px;
   color: var(--muted2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 44vw;
+  max-width: 52vw;
+  line-height: 1.1;
 }
 
-/* Nav: scroll, never wrap, never overlap */
+/* Nav (desktop): right side, one line */
 .pbi-nav{
   display:flex;
   align-items:center;
   gap: 8px;
-  flex: 0 0 auto;
   flex-wrap: nowrap;
   white-space: nowrap;
-
-  /* the magic */
-  max-width: 58vw;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-
-  /* hide scrollbar */
-  scrollbar-width: none;
+  justify-content: flex-end;
 }
-.pbi-nav::-webkit-scrollbar{ display:none; }
 
 .pbi-nav a{
   flex: 0 0 auto;
@@ -200,7 +193,7 @@ body{ margin:0; }
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
   font-size: 13px;
   line-height: 1;
-  min-height: 40px; /* good tap target */
+  min-height: 40px;
   display:inline-flex;
   align-items:center;
 }
@@ -211,25 +204,49 @@ body{ margin:0; }
   border-color: rgba(255,255,255,.22);
 }
 
-/* optional CTA pill */
 .pbi-navCta{
   border-color: rgba(255,255,255,.14) !important;
   background: rgba(120,255,231,.08) !important;
 }
 
-/* Mobile tuning */
-@media (max-width: 560px){
-  .pbi-mark{ width: 36px; height: 36px; border-radius: 14px; }
-  .pbi-brandTitle{ font-size: 12px; }
-  .pbi-brandSub{ font-size: 10px; max-width: 34vw; }
+/* ===== Mobile: STACK TOPBAR (no overlap) ===== */
+@media (max-width: 720px){
+  .pbi-topbar{
+    grid-template-columns: 1fr;    /* stack rows */
+    align-items: start;
+    gap: 10px;
+  }
 
-  .pbi-nav{ max-width: 66vw; gap: 6px; }
+  /* brand stays row 1 */
+  .pbi-brandSub{
+    max-width: 100%;
+  }
+
+  /* nav becomes row 2 — one line, scrollable */
+  .pbi-nav{
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px; /* avoids touch clipping */
+  }
+  .pbi-nav::-webkit-scrollbar{ display:none; }
+
   .pbi-nav a{
-    padding: 8px 10px;
+    padding: 9px 11px;
     border-radius: 12px;
     font-size: 12px;
     min-height: 36px;
   }
+}
+
+/* Ultra-small phones: tighten brand, keep clean */
+@media (max-width: 380px){
+  .pbi-mark{ width: 36px; height: 36px; border-radius: 14px; }
+  .pbi-brandTitle{ font-size: 12px; }
+  .pbi-brandSub{ font-size: 10px; }
 }
 
 /* Ultra-small devices */
