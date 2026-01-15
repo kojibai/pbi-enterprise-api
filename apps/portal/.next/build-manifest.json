@@ -27,15 +27,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/api-keys": [
+    "/console": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/api-keys.js"
+      "static/chunks/pages/console.js"
     ],
-    "/billing": [
+    "/login": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/billing.js"
+      "static/chunks/pages/login.js"
     ]
   },
   "ampFirstPages": []

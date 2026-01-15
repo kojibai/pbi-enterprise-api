@@ -250,7 +250,7 @@ publicRouter.get("/redoc", (_req, res) => {
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><span class="dot"></span> PBI Enterprise API · Redoc</div>
+    <div class="brand"><span class="dot"></span> PBI Enterprise API</div>
     <div class="links">
       <a href="/">Home</a>
       <a href="/docs">Swagger</a>

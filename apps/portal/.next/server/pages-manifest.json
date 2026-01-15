@@ -2,7 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/console": "pages/console.js",
+  "/api-keys": "pages/api-keys.js",
   "/": "pages/index.js",
-  "/billing": "pages/billing.js",
-  "/api-keys": "pages/api-keys.js"
+  "/login": "pages/login.js"
 }
