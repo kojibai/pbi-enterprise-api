@@ -1,11 +1,33 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import { apiJson } from "../lib/api";
 
 const API_DOCS = "https://api.kojib.com/redoc";
 
 export default function HomePage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [err, setErr] = useState<string>("");
+
+  // If already logged in, NEVER show landing. Go to /console.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await apiJson("/v1/portal/me");
+        if (!cancelled) await router.replace("/console");
+      } catch {
+        // not logged in → stay on landing
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const apiBase = useMemo(() => {
     return (process.env.NEXT_PUBLIC_PBI_API_BASE ?? "https://api.kojib.com").replace(/\/+$/, "");
@@ -14,7 +36,8 @@ export default function HomePage() {
   async function onSendLink(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
-    if (!email.trim()) return;
+    const em = email.trim();
+    if (!em) return;
 
     setStatus("sending");
     try {
@@ -22,7 +45,7 @@ export default function HomePage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: email.trim() })
+        body: JSON.stringify({ email: em })
       });
 
       if (!r.ok) {
@@ -56,7 +79,7 @@ export default function HomePage() {
           </div>
 
           <nav className="pbi-nav">
-            <a href={API_DOCS}>Docs</a>
+            <a href={API_DOCS} rel="noreferrer">Docs</a>
             <a href="#access">Get access</a>
             <a href="#pricing">Pricing</a>
           </nav>
@@ -92,7 +115,7 @@ export default function HomePage() {
                   <a className="pbi-btnPrimary" href="#access">
                     Get access <span aria-hidden>→</span>
                   </a>
-                  <a className="pbi-btnGhost" href={API_DOCS}>
+                  <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                     Read the docs
                   </a>
                   <a className="pbi-btnGhost" href="#pricing">
@@ -185,7 +208,7 @@ POST /v1/pbi/verify
               </div>
 
               <div style={{ marginTop: 12 }}>
-                <a className="pbi-btnGhost" href={API_DOCS}>
+                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   See endpoints →
                 </a>
               </div>
@@ -273,6 +296,7 @@ POST /v1/pbi/verify
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     placeholder="you@company.com"
+                    autoComplete="email"
                   />
                   <button className="pbi-btnSend" type="submit" disabled={status === "sending"}>
                     {status === "sending" ? "Sending…" : status === "sent" ? "Sent" : "Send link"}
@@ -311,7 +335,7 @@ POST /v1/pbi/verify
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <a href="/terms">Terms</a>
                 <a href="/privacy">Privacy</a>
-                <a href={API_DOCS}>Docs</a>
+                <a href={API_DOCS} rel="noreferrer">Docs</a>
               </div>
             </footer>
           </section>
