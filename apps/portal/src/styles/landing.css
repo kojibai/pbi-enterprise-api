@@ -565,7 +565,45 @@ body{ margin:0; }
   color: rgba(255,255,255,.74);
   border-top: 1px solid rgba(255,255,255,.08);
 }
+/* ===== HERO YOUTUBE VIDEO (bigger) ===== */
+.pbi-heroVideo {
+  margin-top: 14px;
+  max-width: 100%;        /* <-- remove the 760 cap */
+}
 
+.pbi-heroVideoFrame {
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+
+/* make it feel larger than standard 16:9 */
+.pbi-heroVideoAspect {
+  position: relative;
+  width: 100%;
+  padding-top: 52%;       /* <-- slightly taller than 56.25% would be; feels “bigger” */
+}
+
+.pbi-heroVideoIframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* caption */
+.pbi-heroVideoCaption {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255,255,255,.72);
+}
 /* ===== Android right-edge overflow hardening ===== */
 html, body {
   width: 100%;
@@ -632,3 +670,10 @@ img {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+
+/* Android overflow hardening (safe globally) */
+html, body { overflow-x: hidden; }
+.pbi-landing, .pbi-shell, .pbi-hero, .pbi-heroGrid, .pbi-side { max-width: 100%; }
+.pbi-heroGrid > * { min-width: 0; }
+

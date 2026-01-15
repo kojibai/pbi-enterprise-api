@@ -111,6 +111,24 @@ export default function HomePage() {
                   live <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit
                   forever.
                 </p>
+{/* HERO VIDEO (YouTube embed) */}
+<div className="pbi-heroVideo">
+  <div className="pbi-heroVideoFrame">
+    <div className="pbi-heroVideoAspect">
+      <iframe
+        className="pbi-heroVideoIframe"
+        src="https://www.youtube-nocookie.com/embed/73HYFF1Jlco?autoplay=1&mute=1&loop=1&playlist=73HYFF1Jlco&controls=1&modestbranding=1&rel=0&playsinline=1"
+        title="PBI Intro"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  </div>
+
+  <div className="pbi-heroVideoCaption">
+    Presence-bound verification in under a minute.
+  </div>
+</div>
 
                 <div className="pbi-valueGrid">
                   <ValueLine title="Action-bound proof" body="Receipts bind presence to the exact operation you intended to perform." />
