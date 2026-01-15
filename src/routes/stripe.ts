@@ -12,20 +12,13 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "";
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
 const portalBaseUrl = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
 
-// ✅ Let the installed Stripe SDK pick its supported API version
+// Let the installed Stripe SDK pick its supported API version
 const stripe = stripeSecretKey.length > 0 ? new Stripe(stripeSecretKey) : null;
 
-type StripeSubPayload = {
-  id?: unknown;
-  customer?: unknown;
-  status?: unknown;
-  current_period_end?: unknown;
-  items?: unknown;
-};
+type UnknownRecord = Record<string, unknown>;
 
-function asStripeSubPayload(x: unknown): StripeSubPayload | null {
-  if (typeof x !== "object" || x === null) return null;
-  return x as StripeSubPayload;
+function isRecord(x: unknown): x is UnknownRecord {
+  return typeof x === "object" && x !== null;
 }
 
 function asString(x: unknown): string | null {
@@ -36,6 +29,72 @@ function asNumber(x: unknown): number | null {
   return typeof x === "number" && Number.isFinite(x) ? x : null;
 }
 
+function getPath(obj: unknown, path: readonly (string | number)[]): unknown {
+  let cur: unknown = obj;
+  for (const key of path) {
+    if (!isRecord(cur)) return undefined;
+    cur = cur[String(key)];
+  }
+  return cur;
+}
+
+type Plan = "starter" | "pro" | "enterprise";
+
+function priceToPlan(priceId: string): Plan | null {
+  const starter = process.env.STRIPE_PRICE_STARTER ?? "";
+  const pro = process.env.STRIPE_PRICE_PRO ?? "";
+  const ent = process.env.STRIPE_PRICE_ENTERPRISE ?? "";
+
+  if (priceId === starter) return "starter";
+  if (priceId === pro) return "pro";
+  if (priceId === ent) return "enterprise";
+  return null;
+}
+
+function quotaForPlan(plan: Plan): bigint {
+  const v =
+    plan === "starter"
+      ? process.env.PBI_QUOTA_STARTER
+      : plan === "pro"
+        ? process.env.PBI_QUOTA_PRO
+        : process.env.PBI_QUOTA_ENTERPRISE;
+
+  if (!v || !/^\d+$/.test(v)) {
+    return plan === "starter" ? 100000n : plan === "pro" ? 500000n : 5000000n;
+  }
+  return BigInt(v);
+}
+
+type SubExtract = {
+  stripeSubId: string;
+  stripeCustomerId: string;
+  status: string;
+  priceId: string | null;
+  currentPeriodEnd: number | null;
+};
+
+function extractSubscription(eventObj: unknown): SubExtract | null {
+  if (!isRecord(eventObj)) return null;
+
+  const stripeSubId = asString(eventObj["id"]);
+  const stripeCustomerId = asString(eventObj["customer"]);
+  const status = asString(eventObj["status"]);
+  const currentPeriodEnd = asNumber(eventObj["current_period_end"]);
+
+  // items.data[0].price.id
+  const priceId = asString(getPath(eventObj, ["items", "data", 0, "price", "id"]));
+
+  if (!stripeSubId || !stripeCustomerId || !status) return null;
+
+  return {
+    stripeSubId,
+    stripeCustomerId,
+    status,
+    priceId,
+    currentPeriodEnd
+  };
+}
+
 // Create checkout session (portal-authenticated)
 stripeRouter.post("/checkout", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   if (!stripe) {
@@ -44,10 +103,10 @@ stripeRouter.post("/checkout", requirePortalSession, async (req: PortalAuthedReq
   }
 
   const Body = z.object({
-    priceId: z.string().min(1) // Stripe Price ID
+    priceId: z.string().min(1)
   });
-
   const { priceId } = Body.parse(req.body);
+
   const customerId = req.portalCustomer!.id;
 
   // Ensure stripe customer mapping
@@ -123,49 +182,77 @@ stripeRouter.post(
       return;
     }
 
-    // Subscription created/updated -> update plan/quota
-    if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
-      const payload = asStripeSubPayload(event.data.object);
-      if (!payload) {
-        res.status(400).send("bad_payload");
-        return;
-      }
-
-      const stripeSubId = asString(payload.id);
-      const stripeCustomerId = asString(payload.customer);
-      const status = asString(payload.status);
-      const currentPeriodEnd = asNumber(payload.current_period_end);
-
-      if (!stripeSubId || !stripeCustomerId || !status) {
-        res.status(400).send("missing_fields");
-        return;
-      }
-
+    const applyPlanQuota = async (stripeCustomerId: string, status: string, priceId: string | null): Promise<void> => {
       const map = await pool.query(
         `SELECT customer_id FROM stripe_customers WHERE stripe_customer_id=$1 LIMIT 1`,
         [stripeCustomerId]
       );
 
-      if ((map.rowCount ?? 0) > 0) {
-        const customerId = (map.rows[0] as { customer_id: string }).customer_id;
+      if ((map.rowCount ?? 0) === 0) return;
 
-        // TODO: map Stripe price -> plan/quota.
-        // For now: enterprise on active, fallback to starter on non-active.
-        if (status === "active") {
-          await pool.query(`UPDATE customers SET plan='enterprise', quota_per_month=1000000 WHERE id=$1`, [customerId]);
-        } else {
-          await pool.query(`UPDATE customers SET plan='starter', quota_per_month=100000 WHERE id=$1`, [customerId]);
-        }
+      const customerId = (map.rows[0] as { customer_id: string }).customer_id;
 
-        const id = randomUUID();
-        await pool.query(
-          `INSERT INTO subscriptions (id, customer_id, stripe_subscription_id, status, current_period_end)
-           VALUES ($1, $2, $3, $4, CASE WHEN $5::double precision IS NULL THEN NULL ELSE to_timestamp($5) END)
-           ON CONFLICT (stripe_subscription_id)
-           DO UPDATE SET status=EXCLUDED.status, current_period_end=EXCLUDED.current_period_end`,
-          [id, customerId, stripeSubId, status, currentPeriodEnd ?? null]
-        );
+      const isGood = status === "active" || status === "trialing";
+
+      let plan: Plan = "starter";
+      if (isGood && priceId) {
+        plan = priceToPlan(priceId) ?? "enterprise";
       }
+
+      const quota = quotaForPlan(plan);
+
+      // Update customer
+      await pool.query(
+        `UPDATE customers SET plan=$1, quota_per_month=$2 WHERE id=$3`,
+        [plan, quota.toString(), customerId]
+      );
+
+      // Keep keys in sync (your apiKeyAuth uses api_keys.plan/quota_per_month)
+      await pool.query(
+        `UPDATE api_keys SET plan=$1, quota_per_month=$2 WHERE customer_id=$3`,
+        [plan, quota.toString(), customerId]
+      );
+    };
+
+    if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+      const sub = extractSubscription(event.data.object);
+      if (!sub) {
+        res.status(400).send("bad_payload");
+        return;
+      }
+
+      await applyPlanQuota(sub.stripeCustomerId, sub.status, sub.priceId);
+
+      const id = randomUUID();
+      await pool.query(
+        `INSERT INTO subscriptions (id, customer_id, stripe_subscription_id, status, current_period_end)
+         VALUES (
+           $1,
+           (SELECT customer_id FROM stripe_customers WHERE stripe_customer_id=$2 LIMIT 1),
+           $3,
+           $4,
+           CASE WHEN $5::double precision IS NULL THEN NULL ELSE to_timestamp($5) END
+         )
+         ON CONFLICT (stripe_subscription_id)
+         DO UPDATE SET status=EXCLUDED.status, current_period_end=EXCLUDED.current_period_end`,
+        [id, sub.stripeCustomerId, sub.stripeSubId, sub.status, sub.currentPeriodEnd ?? null]
+      );
+    }
+
+    if (event.type === "customer.subscription.deleted") {
+      const sub = extractSubscription(event.data.object);
+      if (!sub) {
+        res.status(400).send("bad_payload");
+        return;
+      }
+
+      // Revert to starter on delete
+      await applyPlanQuota(sub.stripeCustomerId, "canceled", null);
+
+      await pool.query(
+        `UPDATE subscriptions SET status='canceled' WHERE stripe_subscription_id=$1`,
+        [sub.stripeSubId]
+      );
     }
 
     res.json({ received: true });
