@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { apiJson } from "../lib/api";
 
 const API_DOCS = "https://api.kojib.com/";
+const DEFAULT_CALENDLY = "https://calendly.com/kojibchat/one-on-one";
 
 export default function HomePage() {
   const router = useRouter();
@@ -61,6 +62,56 @@ export default function HomePage() {
     }
   }
 
+  // ---------- SALES / PBI Assured MODAL (CALENDLY ONLY) ----------
+  const SALES_EMAIL = (process.env.NEXT_PUBLIC_PBI_SALES_EMAIL ?? "sales@kojib.com").trim();
+  const SALES_CALENDLY = (process.env.NEXT_PUBLIC_PBI_SALES_CALENDLY_URL ?? DEFAULT_CALENDLY).trim();
+
+  const [salesOpen, setSalesOpen] = useState<boolean>(false);
+  const [securityOpen, setSecurityOpen] = useState<boolean>(false);
+  const salesPanelRef = useRef<HTMLDivElement | null>(null);
+
+  function openSales() {
+    setSalesOpen(true);
+  }
+
+  function closeSales() {
+    setSalesOpen(false);
+    setSecurityOpen(false);
+  }
+
+  function emailSalesNow() {
+    window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("PBI Assured — Schedule a call")}`;
+  }
+
+  // Modal behaviors: ESC closes, click-outside closes, lock scroll.
+  useEffect(() => {
+    if (!salesOpen) return;
+
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+
+    function onKeyDown(ev: KeyboardEvent) {
+      if (ev.key === "Escape") closeSales();
+    }
+
+    function onMouseDown(ev: MouseEvent) {
+      const panel = salesPanelRef.current;
+      if (!panel) return;
+      const target = ev.target as Node;
+      if (panel.contains(target)) return;
+      closeSales();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mousedown", onMouseDown);
+
+    return () => {
+      document.documentElement.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [salesOpen]);
+
   return (
     <div className="pbi-landing">
       <div className="pbi-bg" aria-hidden />
@@ -86,6 +137,9 @@ export default function HomePage() {
               API
             </a>
             <a href="#pricing">Pricing</a>
+            <button className="pbi-navSales" type="button" onClick={openSales}>
+              Talk to Sales
+            </button>
             <a className="pbi-navCta" href="#access">
               Get access
             </a>
@@ -107,29 +161,26 @@ export default function HomePage() {
                 </h1>
 
                 <p className="pbi-lead">
-                  PBI is a drop-in presence layer for high-risk systems. Bind a WebAuthn challenge to an <b>action hash</b>, require a
-                  live <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit
-                  forever.
+                  PBI is a drop-in presence layer for high-risk systems. Bind a WebAuthn challenge to an <b>action hash</b>, require a live{" "}
+                  <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit forever.
                 </p>
-{/* HERO VIDEO (YouTube embed) */}
-<div className="pbi-heroVideo">
-  <div className="pbi-heroVideoFrame">
-    <div className="pbi-heroVideoAspect">
-      <iframe
-        className="pbi-heroVideoIframe"
-        src="https://www.youtube-nocookie.com/embed/73HYFF1Jlco?autoplay=0&mute=0&loop=1&playlist=73HYFF1Jlco&controls=1&modestbranding=1&rel=0&playsinline=1"
-        title="PBI Intro"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        allowFullScreen
-      />
-      
-    </div>
-  </div>
 
-  <div className="pbi-heroVideoCaption">
-    Presence-bound verification in under a minute.
-  </div>
-</div>
+                {/* HERO VIDEO (YouTube embed) */}
+                <div className="pbi-heroVideo">
+                  <div className="pbi-heroVideoFrame">
+                    <div className="pbi-heroVideoAspect">
+                      <iframe
+                        className="pbi-heroVideoIframe"
+                        src="https://www.youtube-nocookie.com/embed/73HYFF1Jlco?autoplay=0&mute=0&loop=1&playlist=73HYFF1Jlco&controls=1&modestbranding=1&rel=0&playsinline=1"
+                        title="PBI Intro"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pbi-heroVideoCaption">Presence-bound verification in under a minute.</div>
+                </div>
 
                 <div className="pbi-valueGrid">
                   <ValueLine title="Action-bound proof" body="Receipts bind presence to the exact operation you intended to perform." />
@@ -145,9 +196,9 @@ export default function HomePage() {
                   <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                     Read API docs
                   </a>
-                  <a className="pbi-btnGhost" href="#how">
-                    See the flow
-                  </a>
+                  <button className="pbi-btnGhost" type="button" onClick={openSales}>
+                    Talk to sales
+                  </button>
                 </div>
 
                 <div className="pbi-proofStrip">
@@ -242,7 +293,10 @@ POST /v1/pbi/verify     { assertion }
             </div>
 
             <div className="pbi-sectionGrid3" style={{ marginTop: 14 }}>
-              <InfoCard title="1) Bind the action" body="Hash what you’re about to do (transfer, rotate keys, deploy). Challenge is bound to that hash." />
+              <InfoCard
+                title="1) Bind the action"
+                body="Hash what you’re about to do (transfer, rotate keys, deploy). Challenge is bound to that hash."
+              />
               <InfoCard title="2) Prove presence (UP+UV)" body="User completes a live WebAuthn ceremony. No accounts required for the proof." />
               <InfoCard title="3) Enforce + store receipt" body="Proceed only on PBI_VERIFIED. Store receipt hash for audit, forensics, disputes." />
             </div>
@@ -260,9 +314,7 @@ POST /v1/pbi/verify     { assertion }
 
             <div className="pbi-card" style={{ marginTop: 14 }}>
               <div className="pbi-cardTitle">Common enforcement points</div>
-              <div className="pbi-cardBody">
-                Wrap the endpoints that move money, change control, or create irreversible commitments.
-              </div>
+              <div className="pbi-cardBody">Wrap the endpoints that move money, change control, or create irreversible commitments.</div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
                 <MiniCard title="Treasury & transfers" body="Presence-gate wires, payouts, escrow release." />
@@ -280,6 +332,9 @@ POST /v1/pbi/verify     { assertion }
                 <a className="pbi-btnGhost" href="#access">
                   Start with a magic link →
                 </a>
+                <button className="pbi-btnGhost" type="button" onClick={openSales}>
+                  Talk to sales →
+                </button>
               </div>
             </div>
           </section>
@@ -310,9 +365,7 @@ POST /v1/pbi/verify     { assertion }
           <section className="pbi-section" id="pricing">
             <div className="pbi-card">
               <div className="pbi-cardTitle">Pricing</div>
-              <div className="pbi-cardBody">
-                Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.
-              </div>
+              <div className="pbi-cardBody">Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.</div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
                 <PlanCard
@@ -321,12 +374,7 @@ POST /v1/pbi/verify     { assertion }
                   period="/month"
                   tagline="Ship presence gates fast."
                   bestFor="Best for: teams shipping their first high-risk presence gates."
-                  bullets={[
-                    "Presence verification core",
-                    "Starter verification quota",
-                    "Receipt hash + audit trail",
-                    "Client portal + billing"
-                  ]}
+                  bullets={["Presence verification core", "Starter verification quota", "Receipt hash + audit trail", "Client portal + billing"]}
                 />
 
                 <PlanCard
@@ -335,12 +383,7 @@ POST /v1/pbi/verify     { assertion }
                   period="/month"
                   tagline="Higher throughput + more automation."
                   bestFor="Best for: products scaling enforcement coverage."
-                  bullets={[
-                    "Everything in Starter",
-                    "Higher verification quota",
-                    "Priority processing",
-                    "Built for scaling teams"
-                  ]}
+                  bullets={["Everything in Starter", "Higher verification quota", "Priority processing", "Built for scaling teams"]}
                 />
 
                 <PlanCard
@@ -358,11 +401,32 @@ POST /v1/pbi/verify     { assertion }
                     "Dispute & compliance ready"
                   ]}
                 />
+
+                <PlanCard
+                  name="PBI Assured"
+                  price="Talk to Sales"
+                  period=""
+                  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
+                  bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
+                  bullets={[
+                    "Custom verification capacity + burst",
+                    "SLA / priority support options",
+                    "Security review packet on request",
+                    "Receipts + retention strategy for audits",
+                    "Roadmap alignment for regulated environments"
+                  ]}
+                  ctaLabel="Schedule a call"
+                  ctaHref={SALES_CALENDLY}
+                  featured
+                />
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnPrimary" href="#access">
                   Start with a magic link →
+                </a>
+                <a className="pbi-btnGhost" href={SALES_CALENDLY} rel="noreferrer">
+                  Schedule a call →
                 </a>
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   Read API docs
@@ -411,8 +475,8 @@ POST /v1/pbi/verify     { assertion }
                   What PBI guarantees (and what it doesn’t)
                 </div>
                 <div className="pbi-cardBody">
-                  PBI produces cryptographic proof of live human presence for a specific action. It does not attempt to identify who
-                  the user is, nor does it store biometric data.
+                  PBI produces cryptographic proof of live human presence for a specific action. It does not attempt to identify who the user is,
+                  nor does it store biometric data.
                 </div>
 
                 <div className="pbi-section" style={{ display: "grid", gap: 10 }}>
@@ -437,6 +501,136 @@ POST /v1/pbi/verify     { assertion }
           </section>
         </main>
       </div>
+
+      {/* ---------- SALES POPOVER MODAL (ONLY RENDERS WHEN OPEN) ---------- */}
+      {salesOpen ? (
+        <div className="pbi-modal" role="dialog" aria-modal="true" aria-label="Talk to Sales">
+          <div className="pbi-modalBackdrop" aria-hidden />
+
+          <div className="pbi-modalShell">
+            <div className="pbi-modalPanel" ref={salesPanelRef}>
+              <div className="pbi-modalTop">
+                <div>
+                  <div className="pbi-proofLabel">PBI Assured</div>
+                  <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
+                    Schedule a call
+                  </div>
+                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                    PBI Assured is for organizations where approvals must be <b>provable</b> — not just “logged.” Schedule a call and we’ll map
+                    your enforcement points, recommend capacity, and provide a security packet for reviewers.
+                  </div>
+                </div>
+
+                <button className="pbi-modalClose" type="button" onClick={closeSales} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+
+              <div className="pbi-modalGrid">
+                <div className="pbi-card" style={{ background: "rgba(255,255,255,.06)" }}>
+                  <div className="pbi-proofLabel">Fastest path</div>
+                  <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
+                    Book a time that works for you.
+                  </div>
+                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                    Your intake form captures the details we need. You’ll get a direct response and a clear next step.
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a className="pbi-btnPrimary" href={SALES_CALENDLY} rel="noreferrer">
+                      Schedule Now →
+                    </a>
+                    <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                      Review API docs
+                    </a>
+                  </div>
+
+                  <div className="pbi-secPack" style={{ marginTop: 12 }}>
+                    <button
+                      className="pbi-secPackBtn"
+                      type="button"
+                      onClick={() => setSecurityOpen((v) => !v)}
+                      aria-expanded={securityOpen}
+                    >
+                      <span>Security packet includes</span>
+                      <span className="pbi-secPackChevron" aria-hidden>
+                        {securityOpen ? "▾" : "▸"}
+                      </span>
+                    </button>
+
+                    {securityOpen ? (
+                      <div className="pbi-secPackBody">
+                        <div className="pbi-secItem">
+                          <div className="pbi-secK">Controls posture</div>
+                          <div className="pbi-secV">
+                            Control mappings and what evidence we can provide today (and what we do not claim).
+                          </div>
+                        </div>
+                        <div className="pbi-secItem">
+                          <div className="pbi-secK">Data flow diagram</div>
+                          <div className="pbi-secV">
+                            What is sent, what is stored (receipts/metadata), and what is explicitly not stored.
+                          </div>
+                        </div>
+                        <div className="pbi-secItem">
+                          <div className="pbi-secK">Receipt retention</div>
+                          <div className="pbi-secV">
+                            Retention options, export strategy, and operational guidance for regulated audit windows.
+                          </div>
+                        </div>
+                        <div className="pbi-secItem">
+                          <div className="pbi-secK">Threat model</div>
+                          <div className="pbi-secV">
+                            Replay resistance, ceremony guarantees, and expected failure modes.
+                          </div>
+                        </div>
+                        <div className="pbi-secItem">
+                          <div className="pbi-secK">Deployment notes</div>
+                          <div className="pbi-secV">
+                            Environment separation guidance, allowlisting, and integration patterns.
+                          </div>
+                        </div>
+
+                        <div className="pbi-proofLabel" style={{ marginTop: 10 }}>
+                          We state guarantees precisely and avoid unverifiable claims.
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="pbi-proofLabel" style={{ marginTop: 12 }}>
+                    Prefer email?{" "}
+                    <a href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent("PBI Assured — Schedule a call")}`}>{SALES_EMAIL}</a>
+                  </div>
+                </div>
+
+                <div className="pbi-card" style={{ background: "rgba(0,0,0,.18)" }}>
+                  <div className="pbi-proofLabel">What we cover on the call</div>
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <ProofLine k="Enforcement points" v="Which endpoints/actions must be presence-gated (money, admin, governance, deploy)." />
+                    <ProofLine k="Capacity & rollout" v="Monthly volume, burst patterns, environments, and rollout sequencing." />
+                    <ProofLine k="Security review path" v="How receipts, retention, and verification work for auditors and incident response." />
+                    <ProofLine k="Commercials" v="PBI Assuredcapacity, support options, and procurement-friendly billing." />
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <a className="pbi-btnPrimary" href={SALES_CALENDLY} rel="noreferrer" style={{ width: "100%", justifyContent: "center" }}>
+                      Schedule now →
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pbi-modalFoot">
+                <div className="pbi-proofLabel">By scheduling, you agree to be contacted about PBI Assured. No spam — just a real response.</div>
+                <button className="pbi-btnGhost" type="button" onClick={closeSales}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -457,8 +651,7 @@ function SectionHead({ kicker, title, body }: { kicker: string; title: string; b
 
 function FigureCard({ img, alt, caption }: { img: string; alt: string; caption?: string }) {
   const { basePath } = useRouter();
-
-  const src = (basePath || "") + img; // img should be like "/pbi_1.png"
+  const src = (basePath || "") + img;
 
   return (
     <div className="pbi-figure">
@@ -468,7 +661,6 @@ function FigureCard({ img, alt, caption }: { img: string; alt: string; caption?:
     </div>
   );
 }
-
 
 function ValueLine({ title, body }: { title: string; body: string }) {
   return (
@@ -552,7 +744,10 @@ function PlanCard({
   tagline,
   bestFor,
   bullets,
-  featured
+  featured,
+  ctaLabel,
+  ctaHref,
+  ctaOnClick
 }: {
   name: string;
   price: string;
@@ -561,7 +756,13 @@ function PlanCard({
   bestFor: string;
   bullets: string[];
   featured?: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
+  ctaOnClick?: () => void;
 }) {
+  const hasClick = typeof ctaOnClick === "function";
+  const hasHref = typeof ctaHref === "string" && ctaHref.length > 0;
+
   return (
     <div
       className="pbi-card"
@@ -603,13 +804,29 @@ function PlanCard({
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <a
-          className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"}
-          href="#access"
-          style={{ width: "100%", justifyContent: "center" }}
-        >
-          Start now
-        </a>
+        {hasClick ? (
+          <button
+            className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"}
+            type="button"
+            onClick={ctaOnClick}
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            {ctaLabel || "Contact"}
+          </button>
+        ) : hasHref ? (
+          <a
+            className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"}
+            href={ctaHref}
+            rel="noreferrer"
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            {ctaLabel || "Schedule a call"}
+          </a>
+        ) : (
+          <a className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"} href="#access" style={{ width: "100%", justifyContent: "center" }}>
+            {ctaLabel || "Start now"}
+          </a>
+        )}
       </div>
     </div>
   );
