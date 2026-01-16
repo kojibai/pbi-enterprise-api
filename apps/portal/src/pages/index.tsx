@@ -459,7 +459,7 @@ POST /v1/pbi/verify     { assertion }
                 />
 
                 <PlanCard
-                  name="Enterprise"
+                  name="Scale"
                   price="$1,999"
                   period="/month"
                   tagline="Authoritative human presence at scale."
@@ -475,7 +475,7 @@ POST /v1/pbi/verify     { assertion }
                 />
 
                 <PlanCard
-                  name="PBI Assured"
+                  name="Enterprise (PBI Assured)"
                   price="Talk to Sales"
                   period=""
                   tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
