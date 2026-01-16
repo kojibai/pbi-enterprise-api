@@ -6,7 +6,7 @@ import { pool } from "../db/pool.js";
 import type { PortalAuthedRequest } from "../middleware/portalSession.js";
 import { requirePortalSession } from "../middleware/portalSession.js";
 import { hashApiKey } from "../db/queries/apiKeys.js";
-
+import { normalizeEmail } from "../util/email.js";
 export const portalRouter = Router();
 
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
@@ -128,23 +128,22 @@ function isPaidPlan(plan: Plan, quotaPerMonth: bigint): boolean {
 // -------------------------
 portalRouter.post("/auth/start", async (req, res) => {
   const Body = z.object({ email: z.string().email() });
-  const { email } = Body.parse(req.body);
+  const { email: rawEmail } = Body.parse(req.body);
 
-  // Create customer if not exists (PENDING until payment)
-  const c = await pool.query(`SELECT id FROM customers WHERE email=$1 LIMIT 1`, [email]);
-  let customerId: string;
+  const email = normalizeEmail(rawEmail);
 
-  if ((c.rowCount ?? 0) === 0) {
-    const id = randomUUID();
-    await pool.query(
-      `INSERT INTO customers (id, email, plan, quota_per_month, is_active)
-       VALUES ($1, $2, 'pending', 0, TRUE)`,
-      [id, email]
-    );
-    customerId = id;
-  } else {
-    customerId = (c.rows[0] as { id: string }).id;
-  }
+  // Create-or-get customer in ONE statement (race-safe)
+  const newId = randomUUID();
+  const cr = await pool.query(
+    `INSERT INTO customers (id, email, plan, quota_per_month, is_active)
+     VALUES ($1, $2, 'pending', 0, TRUE)
+     ON CONFLICT (email) DO UPDATE
+       SET email = EXCLUDED.email
+     RETURNING id`,
+    [newId, email]
+  );
+
+  const customerId = (cr.rows[0] as { id: string }).id;
 
   const rawToken = mintToken();
   const tokenHash = sha256Hex(rawToken);

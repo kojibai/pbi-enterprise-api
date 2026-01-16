@@ -8,10 +8,11 @@ export default function Login() {
   async function submit() {
     setStatus("Sending magic link…");
     try {
-      await apiJson<{ ok: true }>("/v1/portal/auth/start", {
-        method: "POST",
-        body: JSON.stringify({ email })
-      });
+const normalized = email.trim().toLowerCase();
+await apiJson<{ ok: true }>("/v1/portal/auth/start", {
+  method: "POST",
+  body: JSON.stringify({ email: normalized })
+});
       setStatus("✅ Check your email for the sign-in link.");
     } catch {
       setStatus("❌ Failed to send link.");

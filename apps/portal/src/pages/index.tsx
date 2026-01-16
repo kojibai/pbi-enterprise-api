@@ -41,7 +41,7 @@ export default function HomePage() {
   async function onSendLink(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
-    const em = email.trim();
+    const em = email.trim().toLowerCase();
     if (!em) return;
 
     setStatus("sending");
