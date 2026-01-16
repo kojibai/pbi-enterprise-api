@@ -67,6 +67,7 @@ const allowedOrigins = new Set<string>([
   "https://demo.kojib.com",
   "http://localhost:3000",
   "http://localhost:5173",
+
   
 ]);
 
