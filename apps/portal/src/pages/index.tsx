@@ -5,6 +5,10 @@ import { apiJson } from "../lib/api";
 const API_DOCS = "https://api.kojib.com/";
 const DEFAULT_CALENDLY = "https://calendly.com/kojibchat/one-on-one";
 
+// Public tools
+const DEMO_URL = "https://demo.kojib.com";
+const TOOL_URL = "https://tool.kojib.com";
+
 export default function HomePage() {
   const router = useRouter();
 
@@ -82,7 +86,6 @@ export default function HomePage() {
   const calendlyHostRef = useRef<HTMLDivElement | null>(null);
 
   function openSales() {
-    // force a clean remount on every open
     setCalendlyKey((k) => k + 1);
     setSalesOpen(true);
   }
@@ -123,7 +126,6 @@ export default function HomePage() {
       const host = calendlyHostRef.current;
       if (!host) return;
 
-      // Hard reset host every time
       host.innerHTML = "";
 
       const widget = document.createElement("div");
@@ -133,7 +135,6 @@ export default function HomePage() {
       widget.style.height = "700px";
       host.appendChild(widget);
 
-      // If Calendly global is available, explicitly init
       const w = window as any;
       if (w.Calendly && typeof w.Calendly.initInlineWidget === "function") {
         try {
@@ -142,12 +143,11 @@ export default function HomePage() {
             parentElement: widget
           });
         } catch {
-          // no-op: widget.js may auto-init via DOM scan
+          // no-op
         }
       }
     }
 
-    // Try immediately + retry (script may still be loading)
     mountCalendly();
     const timers: number[] = [];
     timers.push(window.setTimeout(mountCalendly, 120));
@@ -189,16 +189,18 @@ export default function HomePage() {
       window.removeEventListener("mousedown", onMouseDown);
     };
   }, [salesOpen]);
-// ✅ EDIT THESE to match your server-enforced quotas
-const PLAN_QUOTA = {
-  starter: 10_000,
-  pro: 100_000,
-  scale: 1_000_000
-} as const;
 
-function fmtInt(n: number) {
-  return n.toLocaleString();
-}
+  // ✅ EDIT THESE to match your server-enforced quotas
+  const PLAN_QUOTA = {
+    starter: 10_000,
+    pro: 100_000,
+    scale: 1_000_000
+  } as const;
+
+  function fmtInt(n: number) {
+    return n.toLocaleString();
+  }
+
   return (
     <div className="pbi-landing">
       <div className="pbi-bg" aria-hidden />
@@ -223,6 +225,7 @@ function fmtInt(n: number) {
             <a href={API_DOCS} rel="noreferrer">
               API
             </a>
+            <a href="#tools">Demo</a>
             <a href="#pricing">Pricing</a>
             <a className="pbi-navCta" href="#access">
               Get access
@@ -249,7 +252,7 @@ function fmtInt(n: number) {
                   <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit forever.
                 </p>
 
-                {/* HERO VIDEO (YouTube embed) */}
+                {/* HERO VIDEO */}
                 <div className="pbi-heroVideo">
                   <div className="pbi-heroVideoFrame">
                     <div className="pbi-heroVideoAspect">
@@ -277,9 +280,15 @@ function fmtInt(n: number) {
                   <a className="pbi-btnPrimary" href="#access">
                     Get access <span aria-hidden>→</span>
                   </a>
+
                   <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                     Read API docs
                   </a>
+
+                  <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
+                    Run live demo
+                  </a>
+
                   <button className="pbi-btnGhost" type="button" onClick={openSales}>
                     Talk to sales
                   </button>
@@ -343,7 +352,69 @@ POST /v1/pbi/verify     { assertion }
                   <FlowRow a="UP+UV" b="verify" />
                   <FlowRow a="receiptHash" b="audit" />
                 </div>
+
+                <div className="pbi-sideActions">
+                  <a className="pbi-btnPrimary" href={DEMO_URL} target="_blank" rel="noreferrer">
+                    Open demo →
+                  </a>
+                  <div className="pbi-smallNote">No keys required.</div>
+                </div>
               </aside>
+            </div>
+          </section>
+
+          {/* TOOLS */}
+          <section className="pbi-section" id="tools">
+            <SectionHead
+              kicker="Proof in under a minute"
+              title="Run the live presence ceremony"
+              body="Want to see it work instantly? The demo runs the full flow end-to-end with no keys. The tool is for integration testing (BYOK) and is linked from the client portal."
+            />
+
+            <div className="pbi-sectionGrid3">
+              <PlanCard
+                name="Live Demo"
+                price="Free"
+                period=""
+                tagline="Public-safe demo. No API keys. Runs the full ceremony."
+                bestFor="Best for: buyers, security reviewers, engineers validating the flow."
+                bullets={[
+                  "No keys required",
+                  "Register passkey → attest → verify",
+                  "Receipt minted + decision shown",
+                  "Safe to share in public"
+                ]}
+                featured
+                ctaLabel="Open demo"
+                ctaHref={DEMO_URL}
+              />
+
+              <PlanCard
+                name="Attester Tool"
+                price="BYOK"
+                period=""
+                tagline="Integration harness for real keys and real API bases."
+                bestFor="Best for: customers integrating PBI into production endpoints."
+                bullets={[
+                  "Use your real API key",
+                  "Custom action payload + actionHash",
+                  "Debug logs + receipts",
+                  "Requires portal account"
+                ]}
+                ctaLabel="Open tool"
+                ctaHref={TOOL_URL}
+              />
+
+              <PlanCard
+                name="API Docs"
+                price="Read"
+                period=""
+                tagline="Exact endpoints, payloads, and response semantics."
+                bestFor="Best for: implementation + security review."
+                bullets={["/v1/pbi/challenge", "/v1/pbi/verify", "Auth: Bearer API key", "Receipt verification model"]}
+                ctaLabel="Open docs"
+                ctaHref={API_DOCS}
+              />
             </div>
           </section>
 
@@ -362,7 +433,7 @@ POST /v1/pbi/verify     { assertion }
             />
           </section>
 
-          {/* CORE IMAGES: WORKFLOW + INTEGRATION + FLOW */}
+          {/* CORE IMAGES */}
           <section className="pbi-section">
             <SectionHead
               kicker="Mechanism"
@@ -410,8 +481,11 @@ POST /v1/pbi/verify     { assertion }
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   View endpoints →
                 </a>
+                <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
+                  Run demo →
+                </a>
                 <a className="pbi-btnGhost" href="#access">
-                  Get Access →
+                  Get access →
                 </a>
                 <button className="pbi-btnGhost" type="button" onClick={openSales}>
                   Talk to sales →
@@ -449,73 +523,76 @@ POST /v1/pbi/verify     { assertion }
               <div className="pbi-cardBody">Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.</div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
-        <PlanCard
-  name="Starter"
-  price="$99"
-  period="/month"
-  tagline="Ship presence gates fast."
-  bestFor="Best for: teams shipping their first high-risk presence gates."
-  bullets={[
-    "Presence verification core",
-    `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo`,
-    "Receipt hash + audit trail",
-    "Client portal + billing"
-  ]}
-/>
+                <PlanCard
+                  name="Starter"
+                  price="$99"
+                  period="/month"
+                  tagline="Ship presence gates fast."
+                  bestFor="Best for: teams shipping their first high-risk presence gates."
+                  bullets={[
+                    "Presence verification core",
+                    `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo`,
+                    "Receipt hash + audit trail",
+                    "Client portal + billing"
+                  ]}
+                />
 
-<PlanCard
-  name="Pro"
-  price="$499"
-  period="/month"
-  tagline="Higher throughput + more automation."
-  bestFor="Best for: products scaling enforcement coverage."
-  bullets={[
-    "Everything in Starter",
-    `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
-    "Priority processing",
-    "Built for scaling teams"
-  ]}
-/>
+                <PlanCard
+                  name="Pro"
+                  price="$499"
+                  period="/month"
+                  tagline="Higher throughput + more automation."
+                  bestFor="Best for: products scaling enforcement coverage."
+                  bullets={[
+                    "Everything in Starter",
+                    `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
+                    "Priority processing",
+                    "Built for scaling teams"
+                  ]}
+                />
 
-<PlanCard
-  name="Scale"
-  price="$1,999"
-  period="/month"
-  tagline="Authoritative human presence at scale."
-  bestFor="Best for: financial infrastructure, governance, mission-critical control."
-  featured
-  bullets={[
-    "Everything in Pro",
-    `Includes ${fmtInt(PLAN_QUOTA.scale)} verifications/mo`,
-    "Enterprise throughput + reliability",
-    "Designed for irreversible operations",
-    "Dispute & compliance ready"
-  ]}
-/>
+                <PlanCard
+                  name="Scale"
+                  price="$1,999"
+                  period="/month"
+                  tagline="Authoritative human presence at scale."
+                  bestFor="Best for: financial infrastructure, governance, mission-critical control."
+                  featured
+                  bullets={[
+                    "Everything in Pro",
+                    `Includes ${fmtInt(PLAN_QUOTA.scale)} verifications/mo`,
+                    "Enterprise throughput + reliability",
+                    "Designed for irreversible operations",
+                    "Dispute & compliance ready"
+                  ]}
+                />
 
-<PlanCard
-  name="Enterprise (PBI Assured)"
-  price="Talk to Sales"
-  period=""
-  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
-  bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
-  bullets={[
-    "Paid pilot available (1 endpoint, 2 weeks)",
-    "Custom verification capacity + burst",
-    "SLA / priority support options",
-    "Security review packet on request",
-    "Receipts + retention strategy for audits",
-    "Roadmap alignment for regulated environments"
-  ]}
-  ctaLabel="Schedule a call"
-  ctaOnClick={openSales}
-  featured
-/>
+                <PlanCard
+                  name="Enterprise (PBI Assured)"
+                  price="Talk to Sales"
+                  period=""
+                  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
+                  bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
+                  bullets={[
+                    "Paid pilot available (1 endpoint, 2 weeks)",
+                    "Custom verification capacity + burst",
+                    "SLA / priority support options",
+                    "Security review packet on request",
+                    "Receipts + retention strategy for audits",
+                    "Roadmap alignment for regulated environments"
+                  ]}
+                  ctaLabel="Schedule a call"
+                  ctaOnClick={openSales}
+                  featured
+                />
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a className="pbi-btnPrimary" href="#access">
-                 Get Access →
+                  Get Access →
+                </a>
+                <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
+                  Run demo
                 </a>
                 <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                   Read API docs
@@ -532,9 +609,7 @@ POST /v1/pbi/verify     { assertion }
                 <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
                   Sign in with a magic link.
                 </div>
-                <div className="pbi-cardBody">
-                  You’ll land in the client portal to activate billing, create API keys, and track usage. No passwords.
-                </div>
+                <div className="pbi-cardBody">You’ll land in the client portal to activate billing, create API keys, and track usage. No passwords.</div>
 
                 <form className="pbi-formRow" onSubmit={onSendLink}>
                   <input
@@ -585,6 +660,9 @@ POST /v1/pbi/verify     { assertion }
                 <a href={API_DOCS} rel="noreferrer">
                   API Docs
                 </a>
+                <a href={DEMO_URL} target="_blank" rel="noreferrer">
+                  Demo
+                </a>
               </div>
             </footer>
           </section>
@@ -615,7 +693,6 @@ POST /v1/pbi/verify     { assertion }
               </div>
 
               <div className="pbi-modalGrid">
-                {/* LEFT: Calendly host (we mount Calendly into this div every time) */}
                 <div className="pbi-card" style={{ background: "rgba(255,255,255,.06)" }}>
                   <div className="pbi-proofLabel">Scheduling</div>
                   <div className="pbi-cardTitle" style={{ marginTop: 6 }}>
@@ -629,9 +706,13 @@ POST /v1/pbi/verify     { assertion }
                     <div ref={calendlyHostRef} />
                   </div>
 
+                  <div style={{ marginTop: 10 }}>
+                    <button className="pbi-btnGhost" type="button" onClick={emailSalesNow} style={{ width: "100%", justifyContent: "center" }}>
+                      Email sales
+                    </button>
+                  </div>
                 </div>
 
-                {/* RIGHT: procurement-safe info + security packet */}
                 <div className="pbi-card" style={{ background: "rgba(0,0,0,.18)" }}>
                   <div className="pbi-proofLabel">Security review</div>
 
@@ -687,6 +768,9 @@ POST /v1/pbi/verify     { assertion }
                   <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
                       Review API docs
+                    </a>
+                    <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
+                      Open demo
                     </a>
                   </div>
                 </div>
@@ -890,6 +974,7 @@ function PlanCard({
             className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"}
             href={ctaHref}
             rel="noreferrer"
+            target={ctaHref?.startsWith("http") ? "_blank" : undefined}
             style={{ width: "100%", justifyContent: "center" }}
           >
             {ctaLabel || "Schedule a call"}

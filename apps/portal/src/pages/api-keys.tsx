@@ -163,23 +163,34 @@ export default function ApiKeysPage() {
             </div>
           </div>
 
-          <nav className="nav" aria-label="Portal navigation">
-            <Link className="navLink" href="/console">
-              Dashboard
-            </Link>
-            <Link className="navLink" href="/usage">
-              Usage
-            </Link>
-            <Link className="navLink" href="/billing">
-              Billing
-            </Link>
-            <Link className="navLink" href="/terms">
-              Terms
-            </Link>
-            <Link className="navLink" href="/privacy">
-              Privacy
-            </Link>
-          </nav>
+<nav className="nav" aria-label="Portal navigation">
+  <Link className="navLink" href="/console">
+    Dashboard
+  </Link>
+  <Link className="navLink" href="/usage">
+    Usage
+  </Link>
+  <Link className="navLink" href="/billing">
+    Billing
+  </Link>
+
+  <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+    Demo
+  </a>
+
+  {!isPending ? (
+    <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+      Attester Tool
+    </a>
+  ) : null}
+
+  <Link className="navLink" href="/terms">
+    Terms
+  </Link>
+  <Link className="navLink" href="/privacy">
+    Privacy
+  </Link>
+</nav>
         </header>
 
         <div className="main">
@@ -288,6 +299,18 @@ export default function ApiKeysPage() {
 
                   <div className="divider" />
 
+<div className="kicker">Tools</div>
+<div className="planBtns" style={{ marginTop: 10 }}>
+  <a className="btnGhostLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+    Open Demo →
+  </a>
+
+  {!isPending ? (
+    <a className="btnGhostLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+      Open Attester Tool →
+    </a>
+  ) : null}
+</div>
                   <div className="hint">
                     Need procurement / SLA / burst capacity? Use <b>Enterprise (PBI Assured)</b> in Billing.
                   </div>

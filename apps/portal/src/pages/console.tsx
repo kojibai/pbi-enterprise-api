@@ -176,6 +176,19 @@ export default function Home() {
             <a className="navLink" href="/billing">
               Billing
             </a>
+
+            {/* Public-safe link (always ok) */}
+            <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+              Demo
+            </a>
+
+            {/* Tool link: hide behind non-pending if you want (keeps it clean) */}
+            {!isPending ? (
+              <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+                Attester Tool
+              </a>
+            ) : null}
+
             <a className="navLink" href="/terms">
               Terms
             </a>
@@ -218,6 +231,9 @@ export default function Home() {
                       <a className="btnGhost" href="/api-keys">
                         Manage keys →
                       </a>
+                      <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+                        Run demo →
+                      </a>
                     </div>
                   </div>
                 ) : null}
@@ -231,6 +247,16 @@ export default function Home() {
                   <button className="btnGhost" onClick={() => load()} disabled={!!busy}>
                     Refresh
                   </button>
+
+                  {!isPending ? (
+                    <a className="btnGhost" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+                      Open Attester →
+                    </a>
+                  ) : (
+                    <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+                      Open Demo →
+                    </a>
+                  )}
                 </div>
 
                 {rawKey ? (
@@ -272,6 +298,44 @@ export default function Home() {
                     <a className="linkBtn" href="/usage">
                       Usage →
                     </a>
+                  </div>
+
+                  <div className="mobileCard mobileCardWide">
+                    <div className="kicker">Tools</div>
+                    <div className="mobileTitle">{isPending ? "Run demo" : "PBI Attester"}</div>
+                    <div className="hint">
+                      {isPending
+                        ? "Public demo (no keys). Run the presence ceremony end-to-end."
+                        : "Run the live presence ceremony end-to-end and mint a receipt."}
+                    </div>
+
+                    <a
+                      className="linkBtnPrimary"
+                      href={isPending ? "https://demo.kojib.com" : "https://tool.kojib.com"}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {isPending ? "Open Demo →" : "Open Attester →"}
+                    </a>
+
+                    <div className="hint" style={{ marginTop: 8 }}>
+                      {isPending ? (
+                        <>
+                          After billing activation, use{" "}
+                          <a href="https://tool.kojib.com" target="_blank" rel="noreferrer" style={{ color: "rgba(120,255,231,.9)" }}>
+                            tool.kojib.com
+                          </a>{" "}
+                          for BYOK testing.
+                        </>
+                      ) : (
+                        <>
+                          Public demo:{" "}
+                          <a href="https://demo.kojib.com" target="_blank" rel="noreferrer" style={{ color: "rgba(120,255,231,.9)" }}>
+                            demo.kojib.com
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mobileCard mobileCardWide">
@@ -340,7 +404,28 @@ export default function Home() {
                     </button>
                   </div>
 
-                  <div className="hint">Stripe checkout opens in the same tab. Plan limits apply automatically to all API keys.</div>
+                  <div className="divider" />
+
+                  <div className="priceTitle">Tools</div>
+
+                  <div className="planBtns">
+                    <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+                      Open Demo →
+                    </a>
+                    {!isPending ? (
+                      <a className="btnPrimary" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+                        Open Attester →
+                      </a>
+                    ) : (
+                      <a className="btnGhost" href="/billing">
+                        Activate billing →
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="hint" style={{ marginTop: 10 }}>
+                    Demo is public-safe. The Attester Tool is for integration testing (BYOK).
+                  </div>
                 </div>
               </aside>
             </div>

@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
-
+import { demoRouter } from "./routes/demo.js";
 import { logger } from "./util/logger.js";
 import { requestId } from "./middleware/requestId.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -103,7 +103,8 @@ app.use(cors(corsOptions));
   // Public UI/docs + health
   app.use("/", publicRouter);
   app.use("/", healthRouter);
-
+// Public demo proxy
+app.use("/demo", demoRouter);
   // ✅ Portal + Stripe must be PUBLIC (no API key)
   app.use("/v1/portal", portalRouter);
   app.use("/v1/stripe", stripeRouter);
