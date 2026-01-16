@@ -20,7 +20,7 @@ const MODE =
 const IS_DEMO = MODE === "demo";
 
 // In DEMO mode we recommend proxy endpoints on same origin (demo.kojib.com)
-const DEFAULT_DEMO_BASE = ENV.VITE_PBI_DEMO_BASE ?? (typeof window !== "undefined" ? window.location.origin : "https://api.kojib.com");
+const DEFAULT_DEMO_BASE = ENV.VITE_PBI_DEMO_BASE ?? "https://api.kojib.com";
 
 // In TOOL mode default to your real API
 const DEFAULT_TOOL_BASE = ENV.VITE_PBI_API_BASE ?? "https://api.kojib.com";
