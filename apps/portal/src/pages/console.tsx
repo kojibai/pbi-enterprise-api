@@ -275,7 +275,7 @@ export default function Home() {
                         onClick={() => checkout("enterprise")}
                         type="button"
                       >
-                        Enterprise
+                        Scale
                       </button>
                     </div>
                   </div>
