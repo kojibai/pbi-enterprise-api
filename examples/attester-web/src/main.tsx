@@ -477,9 +477,7 @@ function App() {
             <div className="small" style={{ opacity: 0.9 }}>
               actionHashHex:
             </div>
-            <code className="pill mono" style={{ flex: 1, overflow: "auto" }}>
-              {actionHashHex || "—"}
-            </code>
+<code className="pill mono hashPill">{actionHashHex || "—"}</code>
             <button className="btn btn-ghost" type="button" onClick={() => safeClipboard(actionHashHex)} disabled={!actionHashHex}>
               Copy
             </button>
@@ -529,9 +527,7 @@ function App() {
             <div className="small" style={{ opacity: 0.9 }}>
               receiptHash:
             </div>
-            <code className="pill mono" style={{ flex: 1, overflow: "auto" }}>
-              {lastReceiptHash}
-            </code>
+<code className="pill mono hashPill">{lastReceiptHash}</code>
             <button className="btn btn-ghost" type="button" onClick={() => safeClipboard(lastReceiptHash)}>
               Copy
             </button>
