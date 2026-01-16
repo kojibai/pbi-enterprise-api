@@ -253,9 +253,14 @@ export default function UsagePage() {
                   Live metering · audit-ready totals
                 </div>
 
-                <h1 className="h1 email">
-                  <EmailText email={me.customer.email} />
-                </h1>
+<div className="emailRow">
+  <div className="emailPill" title={me.customer.email}>
+    <span className="emailPillDot" aria-hidden />
+    <span className="emailPillText">
+      <EmailText email={me.customer.email} />
+    </span>
+  </div>
+</div>
 
                 <p className="lead">
                   Usage is metered automatically (challenge + verify). Use this view for capacity planning, auditing, and rollout coverage.
