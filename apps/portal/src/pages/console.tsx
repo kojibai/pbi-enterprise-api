@@ -319,7 +319,7 @@ export default function Home() {
                       onClick={() => checkout("enterprise")}
                       type="button"
                     >
-                      Enterprise {PLAN_PRICE.enterprise}/mo
+                      Scale {PLAN_PRICE.enterprise}/mo
                     </button>
                   </div>
 
