@@ -200,117 +200,391 @@ publicRouter.get("/openapi.yaml", (_req, res) => {
   res.type("text/yaml").send(loaded.yamlText);
 });
 
-// ---- Redoc (TOP-LEVEL route, NOT inside /docs)
+// ---- ReDoc (TOP-LEVEL route, NOT inside /docs)
 publicRouter.get("/redoc", (_req, res) => {
   res.type("text/html").send(`<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PBI Enterprise API</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>PBI Enterprise API · Reference</title>
   <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+
   <style>
+    :root{
+      --bg0:#05070e;
+      --bg1:#070b18;
+
+      --ink:rgba(234,243,255,.92);
+      --muted:rgba(234,243,255,.72);
+      --muted2:rgba(234,243,255,.56);
+
+      --line:rgba(255,255,255,.10);
+      --line2:rgba(255,255,255,.16);
+
+      --glass:rgba(255,255,255,.06);
+      --glass2:rgba(255,255,255,.09);
+      --blackGlass:rgba(0,0,0,.30);
+
+      --accent:#78ffe7;
+      --accent2:#8c9bff;
+
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius: 16px;
+
+      --ui: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    html, body { height: 100%; }
     body{
       margin:0;
+      font-family: var(--ui);
+      color: var(--ink);
       background:
-        radial-gradient(1200px 800px at 20% 10%, rgba(120,255,231,.10), transparent 55%),
-        radial-gradient(900px 700px at 80% 20%, rgba(140,155,255,.08), transparent 60%),
-        linear-gradient(180deg,#05070e,#070b18);
-      color: #eaf3ff;
+        radial-gradient(1200px 800px at 18% 10%, rgba(120,255,231,.10), transparent 55%),
+        radial-gradient(900px 700px at 82% 18%, rgba(140,155,255,.09), transparent 60%),
+        linear-gradient(180deg,var(--bg0),var(--bg1));
     }
-    .topbar{
-      position:sticky; top:0; z-index:10;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.35);
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      padding: 10px 14px;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      color: rgba(234,243,255,.92);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap: 10px;
+
+    /* Accessible skip link */
+    .skip{
+      position:absolute;
+      left:-9999px; top:auto;
+      width:1px; height:1px;
+      overflow:hidden;
     }
-    .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.2px;font-size:13px;white-space:nowrap;}
-    .dot{width:10px;height:10px;border-radius:999px;background:rgba(120,255,231,.85);
-      box-shadow:0 0 0 3px rgba(120,255,231,.12),0 0 18px rgba(120,255,231,.25);}
-    .links{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
-    .links a{
-      color: rgba(234,243,255,.92);
-      text-decoration:none;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      padding: 8px 10px;
+    .skip:focus{
+      left:12px; top:12px;
+      width:auto; height:auto;
+      padding:10px 12px;
       border-radius: 12px;
+      background: rgba(0,0,0,.6);
+      border: 1px solid var(--line2);
+      color: var(--ink);
+      z-index: 9999;
+      outline: none;
     }
-    .links a:hover{ background: rgba(255,255,255,.08); }
-    #redoc{ min-height: calc(100vh - 52px); }
+
+    /* Sticky topbar */
+    .pbi-topbar{
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.30));
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    /* Safe areas */
+    @supports (padding: env(safe-area-inset-top)) {
+      .pbi-topbar-inner{
+        padding-top: calc(10px + env(safe-area-inset-top));
+        padding-bottom: 10px;
+      }
+    }
+
+    .pbi-topbar-inner{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 220px;
+    }
+    .mark{
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(120,255,231,.90);
+      box-shadow:
+        0 0 0 4px rgba(120,255,231,.12),
+        0 0 22px rgba(120,255,231,.22);
+      flex: 0 0 auto;
+    }
+    .brand-text{
+      display:flex;
+      flex-direction:column;
+      line-height: 1.05;
+      gap: 3px;
+    }
+    .brand-title{
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .2px;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .brand-sub{
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .nav{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      border: 1px solid var(--line2);
+      background: rgba(255,255,255,.06);
+      color: var(--ink);
+      text-decoration:none;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .15px;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,.09);
+      border-color: rgba(255,255,255,.20);
+      transform: translateY(-1px);
+    }
+    .btn:active{ transform: translateY(0px); }
+    .btn:focus-visible{
+      outline: 2px solid rgba(120,255,231,.55);
+      outline-offset: 2px;
+    }
+    .btn.primary{
+      border-color: rgba(120,255,231,.30);
+      background: linear-gradient(180deg, rgba(120,255,231,.14), rgba(255,255,255,.06));
+    }
+
+    /* ReDoc container */
+    #redoc{
+      min-height: calc(100vh - 64px);
+    }
+
+    /* Loading shell (removed after Redoc.init callback) */
+    .boot{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 40px 14px 60px;
+    }
+    .boot-card{
+      width: min(860px, 100%);
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+    .boot-title{
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      margin: 0 0 8px 0;
+    }
+    .boot-sub{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.5;
+    }
+    .boot-sub code{
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      color: rgba(234,243,255,.88);
+    }
+
+    @media (max-width: 720px){
+      .brand{ min-width: 0; }
+      .brand-sub{ display:none; }
+      .btn{ padding: 9px 10px; }
+    }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand"><span class="dot"></span> PBI Enterprise API · Redoc</div>
-    <div class="links">
-      <a href="/">Home</a>
-      <a href="/docs">Swagger</a>
-      <a href="/openapi.yaml">OpenAPI</a>
-    </div>
-  </div>
+  <a class="skip" href="#redoc">Skip to API docs</a>
 
-  <div id="redoc"></div>
+  <header class="pbi-topbar" role="banner">
+    <div class="pbi-topbar-inner">
+      <div class="brand" aria-label="PBI Enterprise API">
+        <span class="mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <div class="brand-title">PBI Enterprise API</div>
+          <div class="brand-sub">Reference · ReDoc</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Documentation links">
+        <a class="btn" href="/">Home</a>
+        <a class="btn" href="/docs">Swagger</a>
+        <a class="btn primary" href="/openapi.yaml">OpenAPI</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="redoc" role="main">
+    <div class="boot" id="pbi-boot">
+      <div class="boot-card">
+        <div class="boot-title">Loading API Reference…</div>
+        <p class="boot-sub">
+          If this takes more than a few seconds, verify that <code>/openapi.yaml</code> is reachable.
+        </p>
+      </div>
+    </div>
+  </main>
 
   <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
   <script src="/redoc-init.js"></script>
 </body>
 </html>`);
 });
-
 publicRouter.get("/redoc-init.js", (_req, res) => {
-  res.type("application/javascript").send(`
-    Redoc.init("/openapi.yaml", {
+  res.type("application/javascript").send(`(function () {
+  "use strict";
+
+  var SPEC_URL = "/openapi.yaml";
+  var mount = document.getElementById("redoc");
+  var boot = document.getElementById("pbi-boot");
+
+  /** @param {unknown} err */
+  function showError(err) {
+    var msg =
+      typeof err === "object" && err !== null && "message" in err
+        ? String(/** @type {{ message?: unknown }} */ (err).message)
+        : String(err);
+
+    if (boot) {
+      boot.innerHTML =
+        '<div class="boot-card">' +
+        '<div class="boot-title">Failed to load API Reference</div>' +
+        '<p class="boot-sub">Check that <code>/openapi.yaml</code> is reachable and valid. Error: ' +
+        msg +
+        "</p></div>";
+    } else {
+      // Fallback if boot shell isn't present
+      try { console.error("[redoc] init failed:", err); } catch (_) {}
+    }
+  }
+
+  function removeBoot() {
+    if (boot && boot.parentNode) boot.parentNode.removeChild(boot);
+  }
+
+  /** @param {number} tries */
+  function waitForRedoc(tries) {
+    var w = /** @type {Window & { Redoc?: { init: Function } }} */ (window);
+    if (w.Redoc && typeof w.Redoc.init === "function") return init();
+    if (tries > 200) return showError("Redoc.init not available");
+    setTimeout(function () { waitForRedoc(tries + 1); }, 25);
+  }
+
+  function init() {
+    var w = /** @type {Window & { Redoc?: { init: Function } }} */ (window);
+    if (!mount) return showError("Missing #redoc mount element");
+
+    var options = {
+      // Prevent sticky header from covering deep links
+      scrollYOffset: ".topbar, .pbi-topbar",
+
+      // ReDoc options
       hideHostname: true,
       expandResponses: "200,201",
+      sanitize: true,
+      disableSearch: false,
+      sortRequiredPropsFirst: true,
+      jsonSamplesExpandLevel: "2",
+      schemasExpansionLevel: "0",
+      nativeScrollbars: true,
+
       theme: {
         colors: {
           primary: { main: "#78ffe7" },
           text: {
-            primary: "#ffffff",
-            secondary: "rgba(255,255,255,.78)"
+            primary: "rgba(234,243,255,.92)",
+            secondary: "rgba(234,243,255,.70)"
           },
-          border: { dark: "rgba(255,255,255,.14)", light: "rgba(255,255,255,.10)" },
-          http: { get: "#78ffe7", post: "#9aaaff", put: "#ffd38a", delete: "#ff8aa0" },
+          border: {
+            dark: "rgba(255,255,255,.14)",
+            light: "rgba(255,255,255,.10)"
+          },
+          http: {
+            get: "#78ffe7",
+            post: "#9aaaff",
+            put: "#ffd38a",
+            delete: "#ff8aa0"
+          },
           responses: { success: "#78ffe7", error: "#ff8aa0" }
         },
+
         typography: {
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          fontFamily:
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          fontSize: "14px",
+          lineHeight: "1.65em",
+          fontWeightRegular: "420",
           headings: {
-            fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-            fontWeight: "700",
-            color: "#ffffff"
+            fontFamily:
+              "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+            fontWeight: "720",
+            color: "rgba(234,243,255,.96)"
           },
           links: { color: "#78ffe7" },
           code: {
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
-            color: "#ffffff",
-            backgroundColor: "rgba(255,255,255,.06)"
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            color: "rgba(234,243,255,.92)",
+            backgroundColor: "rgba(0,0,0,.24)"
           }
         },
+
         sidebar: {
+          width: "310px",
           backgroundColor: "rgba(0,0,0,.32)",
-          textColor: "#ffffff",
+          textColor: "rgba(234,243,255,.86)",
           activeTextColor: "#78ffe7",
-          groupItems: { textTransform: "none" }
+          groupItems: { textTransform: "none" },
+          level1Items: { textTransform: "none" }
         },
+
         rightPanel: {
           backgroundColor: "#05070e",
-          textColor: "#ffffff"
+          textColor: "rgba(234,243,255,.92)"
         }
       }
-    }, document.getElementById("redoc"));
-  `);
-});
+    };
 
+    try {
+      w.Redoc.init(SPEC_URL, options, mount, function (err) {
+        if (err) return showError(err);
+        removeBoot();
+      });
+    } catch (e) {
+      showError(e);
+    }
+  }
+
+  waitForRedoc(0);
+})();`);
+});
 // ---- Swagger UI (correct mounting + typed-safe)
 publicRouter.use("/docs", (req, res, next) => {
   const loaded = loadSpec();
