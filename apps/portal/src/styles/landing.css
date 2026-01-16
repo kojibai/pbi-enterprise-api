@@ -452,6 +452,88 @@ body{ margin:0; }
     line-height: 1.25;
   }
 }
+.emailRow{
+  margin-top: 12px;
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+
+.emailPill{
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08);
+  box-shadow:
+    0 18px 55px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  overflow:hidden;
+}
+
+.emailPill::before{
+  content:"";
+  position:absolute;
+  inset:-40px;
+  background:
+    radial-gradient(240px 140px at 20% 25%, rgba(120,255,231,.22), transparent 60%),
+    radial-gradient(240px 140px at 80% 30%, rgba(154,170,255,.18), transparent 62%),
+    radial-gradient(280px 180px at 55% 120%, rgba(255,190,120,.14), transparent 68%);
+  filter: blur(18px);
+  opacity: .95;
+  pointer-events:none;
+}
+
+.emailPill::after{
+  content:"";
+  position:absolute;
+  left: 10px;
+  right: 10px;
+  top: 6px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0));
+  opacity: .65;
+  pointer-events:none;
+}
+
+.emailPillDot{
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(120,255,231,.95);
+  box-shadow: 0 0 0 6px rgba(120,255,231,.10), 0 0 24px rgba(120,255,231,.22);
+  flex: 0 0 auto;
+}
+
+.emailPillText{
+  min-width:0;
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.emailInline{ display:inline; }
+
+/* Mobile: smaller + allow wrap at @ / . via <wbr/> */
+@media (max-width: 560px){
+  .emailPill{ padding: 9px 12px; }
+  .emailPillText{
+    font-size: 14px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+}
 /* ======================
    Mint/Teal buttons must always use BLACK text
    (anchors + buttons, all states)

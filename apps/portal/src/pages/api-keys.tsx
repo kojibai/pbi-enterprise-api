@@ -144,7 +144,23 @@ export default function ApiKeysPage() {
       void navigator.clipboard.writeText(text);
     } catch {}
   }
-
+function EmailText({ email }: { email: string }) {
+  const parts = email.split(/([@.])/);
+  return (
+    <span className="emailInline" aria-label={email}>
+      {parts.map((p, i) =>
+        p === "@" || p === "." ? (
+          <span key={String(i)}>
+            {p}
+            <wbr />
+          </span>
+        ) : (
+          <span key={String(i)}>{p}</span>
+        )
+      )}
+    </span>
+  );
+}
   return (
     <div className="console">
       <style>{css}</style>
@@ -203,7 +219,14 @@ export default function ApiKeysPage() {
                   Keys mint access · receipts prove presence
                 </div>
 
-                <h1 className="h1 email">{me?.customer.email ?? "—"}</h1>
+               <div className="emailRow">
+  <div className="emailPill" title={me?.customer.email ?? "—"}>
+    <span className="emailPillDot" aria-hidden />
+    <span className="emailPillText">
+      <EmailText email={me?.customer.email ?? "—"} />
+    </span>
+  </div>
+</div>
                 <p className="lead">
                   Create keys for server-side calls to PBI. Treat secrets like passwords—store them once, securely. Plan limits apply automatically.
                 </p>
@@ -604,7 +627,7 @@ body{ margin:0; overflow-x:hidden; }
   line-height: 1.05;
   font-size: 30px;
 }
-.h1.email{ overflow-wrap:anywhere; word-break: break-word; }
+
 .lead{
   margin-top: 8px;
   color: rgba(255,255,255,.76);
