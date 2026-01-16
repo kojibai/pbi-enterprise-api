@@ -325,12 +325,12 @@ function EmailText({ email }: { email: string }) {
 <div className="kicker">Tools</div>
 <div className="planBtns" style={{ marginTop: 10 }}>
   <a className="btnGhostLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-    Open Demo →
+    Demo →
   </a>
 
   {!isPending ? (
     <a className="btnGhostLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-      Open Attester Tool →
+    Attester Tool →
     </a>
   ) : null}
 </div>

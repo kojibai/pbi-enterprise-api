@@ -315,11 +315,11 @@ function latestMonthKey(rows: UsageRow[]): string | null {
 
                   {!isPending ? (
                     <a className="btnGhost" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-                      Open Attester →
+                    Attester →
                     </a>
                   ) : (
                     <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-                      Open Demo →
+                    Demo →
                     </a>
                   )}
                 </div>
@@ -380,7 +380,7 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {isPending ? "Open Demo →" : "Open Attester →"}
+                      {isPending ? "Demo →" : "Attester →"}
                     </a>
 
                     <div className="hint" style={{ marginTop: 8 }}>
@@ -492,11 +492,11 @@ function latestMonthKey(rows: UsageRow[]): string | null {
 
                   <div className="planBtns">
                     <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-                      Open Demo →
+                    Demo →
                     </a>
                     {!isPending ? (
                       <a className="btnPrimary" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-                        Open Attester →
+                        Attester →
                       </a>
                     ) : (
                       <a className="btnGhost" href="/billing">

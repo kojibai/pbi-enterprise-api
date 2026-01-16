@@ -763,7 +763,7 @@ POST /v1/pbi/verify     { assertion }
                       Review API docs
                     </a>
                     <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
-                      Open demo
+                      Demo
                     </a>
                   </div>
                 </div>
