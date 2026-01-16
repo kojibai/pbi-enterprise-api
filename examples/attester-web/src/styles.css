@@ -50,6 +50,9 @@ body{
   margin:0;
   font-family:var(--sans);
   color:var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
 
   /* Background (single source of truth) */
   background:
@@ -59,9 +62,6 @@ body{
     linear-gradient(180deg, var(--bg0), var(--bg1));
 
   overflow-x:hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
 }
 
 a{ color:inherit; }
@@ -73,7 +73,7 @@ a{ color:inherit; }
   width: 100%;
 }
 
-/* Prevent any child from forcing horizontal scroll (mobile hardening) */
+/* Mobile hardening */
 .krystal-wrap, .header, .card, .status, .split, .grid { max-width: 100%; min-width: 0; }
 .grid > *, .split > * { min-width: 0; }
 
@@ -89,9 +89,10 @@ a{ color:inherit; }
   border: 1px solid var(--line);
   box-shadow: var(--shadow2);
   overflow:hidden;
+  isolation: isolate;
 }
 
-/* Subtle halo behind header – NOT an overlay across the page */
+/* subtle halo (never a veil over content) */
 .header::before{
   content:"";
   position:absolute;
@@ -100,8 +101,9 @@ a{ color:inherit; }
     radial-gradient(600px 260px at 20% 0%, rgba(120,255,231,.16), transparent 60%),
     radial-gradient(560px 240px at 80% 20%, rgba(130,170,255,.14), transparent 60%);
   filter: blur(12px);
-  opacity:.9;
+  opacity:.85;
   pointer-events:none;
+  mix-blend-mode: normal;
 }
 
 .header-inner{
@@ -155,6 +157,11 @@ a{ color:inherit; }
     0 0 18px rgba(120,255,231,.25);
 }
 
+@media (max-width: 760px){
+  .header-inner{ flex-direction:column; align-items:stretch; }
+  .badge{ align-self:flex-start; }
+}
+
 /* ======================
    Layout
 ====================== */
@@ -165,10 +172,7 @@ a{ color:inherit; }
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-
 @media (max-width: 760px){
-  .header-inner{ flex-direction:column; align-items:stretch; }
-  .badge{ align-self:flex-start; }
   .grid{ grid-template-columns: 1fr; }
 }
 
@@ -183,13 +187,10 @@ a{ color:inherit; }
   border: 1px solid var(--line);
   box-shadow: var(--shadow2);
   overflow:hidden;
+  isolation: isolate;
 }
 
-/*
-  IMPORTANT:
-  Your old overlay issue is usually caused by large gradients
-  inside ::after that darken/veil content. Keep it very subtle.
-*/
+/* keep this extremely subtle to avoid “veil” */
 .card::after{
   content:"";
   position:absolute;
@@ -197,9 +198,10 @@ a{ color:inherit; }
   background:
     radial-gradient(520px 260px at 18% 10%, rgba(120,255,231,.08), transparent 62%),
     radial-gradient(560px 280px at 82% 18%, rgba(150,170,255,.08), transparent 62%);
-  opacity:.85;
+  opacity:.80;
   pointer-events:none;
   filter: blur(10px);
+  mix-blend-mode: normal;
 }
 
 .card-inner{
@@ -214,6 +216,41 @@ a{ color:inherit; }
   margin-bottom: 8px;
   letter-spacing: .22px;
 }
+
+.small{
+  font-size: 12px;
+  color: rgba(234,243,255,.70);
+}
+
+.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.section-title > *{ min-width:0; }
+
+/* separators */
+.kline{
+  height:1px;
+  width:100%;
+  background: linear-gradient(90deg, transparent, rgba(120,255,231,.30), rgba(150,170,255,.20), transparent);
+  opacity:.9;
+}
+
+/* Pills */
+.pill{
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(234,243,255,.78);
+  max-width: 100%;
+}
+.mono{ font-family: var(--mono); }
 
 /* ======================
    Inputs
@@ -238,6 +275,7 @@ a{ color:inherit; }
     inset 0 1px 0 rgba(255,255,255,.06);
 }
 
+/* row utilities */
 .row{
   display:flex;
   gap: 10px;
@@ -246,13 +284,13 @@ a{ color:inherit; }
 }
 .row > *{ min-width:0; }
 
-/* Selects match inputs */
+/* Selects */
 select.input{
   appearance: none;
   -webkit-appearance: none;
   background-image:
-    linear-gradient(45deg, transparent 50%, rgba(255,255,255,.65) 50%),
-    linear-gradient(135deg, rgba(255,255,255,.65) 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, rgba(255,255,255,.70) 50%),
+    linear-gradient(135deg, rgba(255,255,255,.70) 50%, transparent 50%);
   background-position:
     calc(100% - 16px) calc(50% - 3px),
     calc(100% - 11px) calc(50% - 3px);
@@ -260,6 +298,18 @@ select.input{
   background-repeat: no-repeat;
   padding-right: 34px;
 }
+
+/* Action grid */
+.actionGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-width:0;
+}
+@media (max-width: 760px){
+  .actionGrid{ grid-template-columns: 1fr; }
+}
+.field{ min-width:0; }
 
 /* ======================
    Buttons
@@ -313,11 +363,12 @@ select.input{
   transform:none;
 }
 
-/* Always black text on mint/teal (if you use mint in tool later) */
-.btn-primary,
-.btn-primary:link,
-.btn-primary:visited{
-  color: rgba(234,243,255,.92);
+.icon{
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(150,170,255,.20);
+  box-shadow: 0 0 0 3px rgba(150,170,255,.10);
 }
 
 /* ======================
@@ -334,6 +385,7 @@ select.input{
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow2);
   min-width: 0;
+  isolation: isolate;
 }
 
 .status-title{
@@ -347,6 +399,10 @@ select.input{
   line-height: 1.45;
   font-size: 13px;
 }
+
+/* ======================
+   Split
+====================== */
 
 .split{
   margin-top: 12px;
@@ -369,52 +425,6 @@ select.input{
   overflow-wrap: anywhere;
 }
 
-/* ======================
-   Pills / separators
-====================== */
-
-.section-title{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  min-width: 0;
-}
-.section-title > *{ min-width:0; }
-
-.pill{
-  font-size: 11px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
-  color: rgba(234,243,255,.78);
-  max-width: 100%;
-}
-
-.mono{ font-family: var(--mono); }
-
-.kline{
-  height:1px;
-  width:100%;
-  background: linear-gradient(90deg, transparent, rgba(120,255,231,.30), rgba(150,170,255,.20), transparent);
-  opacity:.9;
-}
-
-.small{
-  font-size: 12px;
-  color: rgba(234,243,255,.70);
-}
-
-.icon{
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: rgba(150,170,255,.20);
-  box-shadow: 0 0 0 3px rgba(150,170,255,.10);
-}
-
 /* Details */
 .details summary{
   cursor: pointer;
@@ -422,10 +432,7 @@ select.input{
 }
 .details summary::-webkit-details-marker{ display:none; }
 
-/* ======================
-   WebAuthn ack row
-====================== */
-
+/* Ack row */
 .ackRow{
   display:flex;
   gap: 10px;
@@ -440,8 +447,7 @@ select.input{
 
 /* ======================
    Long hash overflow (FINAL)
-   - keeps Copy button visible
-   - never lets hash push layout wider than card
+   Ellipsis + Copy always visible.
 ====================== */
 
 .hashRow{
@@ -453,7 +459,12 @@ select.input{
 }
 .hashRow > *{ min-width: 0; }
 
-.hashRow .pill{
+.hashRow .small{
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.hashPill{
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
@@ -462,47 +473,17 @@ select.input{
   text-overflow: ellipsis;
 }
 
-/* Make the left label never wrap awkwardly */
-.hashRow .small{
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* If you want wrap instead of ellipsis, swap the .hashRow .pill rules with:
-.hashRow .pill{
-  flex: 1 1 auto;
-  min-width:0;
-  max-width:100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-*/
-
 /* ======================
-   Overlay / “veil” fixes
-   - ensure no pseudo-element sits above content
-   - keep glass crisp
+   Final overlay/veil hardening
 ====================== */
 
-.header, .card, .status{
-  isolation: isolate; /* prevents blend/stack weirdness on iOS */
-}
-
-.header::before,
-.card::after{
-  mix-blend-mode: normal;
-}
-
-/* Extra: ensure nothing accidentally creates a full-page overlay */
+/* Ensure no accidental page-level pseudo overlays */
 .krystal-wrap::before,
 .krystal-wrap::after{
   content: none !important;
 }
 
-/* ======================
-   Mobile tightening
-====================== */
-
+/* Mobile tightening */
 @media (max-width: 520px){
   .krystal-wrap{ padding-left: 14px; padding-right: 14px; }
   .card-inner{ padding: 18px; }
@@ -510,7 +491,7 @@ select.input{
   .title{ font-size: 20px; }
 }
 
-/* Reduce motion preference */
+/* Reduce motion */
 @media (prefers-reduced-motion: reduce){
-  .btn, .pbi-nav a, .card, .header{ transition: none !important; }
+  .btn, .card, .header{ transition: none !important; }
 }

@@ -14,9 +14,15 @@ import "./styles.css";
  *  2) hostname starts with "demo." => demo
  *  3) default => tool
  */
-const ENV: Record<string, string | undefined> = (import.meta as any)?.env ?? {};
-const MODE =
-  (ENV.VITE_PBI_MODE ?? (typeof window !== "undefined" && window.location.hostname.startsWith("demo.") ? "demo" : "tool")).toLowerCase();
+
+type EnvLike = Record<string, string | undefined>;
+const ENV: EnvLike = (import.meta as unknown as { env?: EnvLike }).env ?? {};
+
+const MODE = (
+  ENV.VITE_PBI_MODE ??
+  (typeof window !== "undefined" && window.location.hostname.startsWith("demo.") ? "demo" : "tool")
+).toLowerCase();
+
 const IS_DEMO = MODE === "demo";
 
 // In DEMO mode we recommend proxy endpoints on same origin (demo.kojib.com)
@@ -41,29 +47,53 @@ const ACTION_KIND_OPTIONS: { value: ActionKind; label: string; desc: string }[] 
   { value: "ADMIN_DANGEROUS_OP", label: "ADMIN_DANGEROUS_OP", desc: "Step-up for privileged or destructive admin operations" }
 ];
 
+type StoredCredential = ReturnType<typeof loadStoredCredential>;
+type Attestation = Awaited<ReturnType<typeof attestWithPasskey>>;
+
+type ChallengeResp = {
+  id: string;
+  challengeB64Url: string;
+  expiresAt?: string;
+  kind?: string;
+  actionHashHex?: string;
+};
+
 // ---- helpers ----
 
 function isWebAuthnSupported(): boolean {
   return typeof window !== "undefined" && typeof PublicKeyCredential !== "undefined" && !!navigator?.credentials;
 }
 
-function stableStringify(v: any): string {
-  // Minimal stable JSON for action hash computation
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function getString(obj: Record<string, unknown>, key: string): string | null {
+  const v = obj[key];
+  return typeof v === "string" ? v : null;
+}
+
+function stableStringify(v: unknown): string {
   if (v === null || v === undefined) return "null";
   if (typeof v === "number" || typeof v === "boolean") return JSON.stringify(v);
   if (typeof v === "string") return JSON.stringify(v);
+
   if (Array.isArray(v)) return `[${v.map((x) => stableStringify(x)).join(",")}]`;
+
   if (typeof v === "object") {
-    const keys = Object.keys(v).sort();
-    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(",")}}`;
+    const o = v as Record<string, unknown>;
+    const keys = Object.keys(o).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
   }
+
   return JSON.stringify(String(v));
 }
+
 function bytesToHex(bytes: Uint8Array): string {
   let out = "";
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i];
-    if (b === undefined) continue; // satisfies TS under noUncheckedIndexedAccess
+    if (b === undefined) continue;
     out += b.toString(16).padStart(2, "0");
   }
   return out;
@@ -83,14 +113,13 @@ function randHex(nBytes = 16): string {
 }
 
 function safeClipboard(text: string) {
+  if (!text) return;
   try {
     void navigator.clipboard.writeText(text);
   } catch {
     // ignore
   }
 }
-
-type ChallengeResp = { id: string; challengeB64Url: string; expiresAt?: string; kind?: string; actionHashHex?: string };
 
 // DEMO proxy calls: no API keys in browser.
 async function demoChallenge(apiBase: string, kind: ActionKind, actionHashHex: string): Promise<ChallengeResp> {
@@ -104,7 +133,7 @@ async function demoChallenge(apiBase: string, kind: ActionKind, actionHashHex: s
   return (await r.json()) as ChallengeResp;
 }
 
-async function demoVerify(apiBase: string, body: { challengeId: string; assertion: any }): Promise<PbiVerifyResp> {
+async function demoVerify(apiBase: string, body: { challengeId: string; assertion: Attestation }): Promise<PbiVerifyResp> {
   const url = `${apiBase.replace(/\/+$/, "")}${DEMO_VERIFY_PATH}`;
   const r = await fetch(url, {
     method: "POST",
@@ -119,7 +148,6 @@ function App() {
   // Base defaults per mode
   const initialBase = useMemo(() => {
     if (IS_DEMO) return DEFAULT_DEMO_BASE;
-    // tool: persist base (but never persist keys)
     try {
       const saved = localStorage.getItem(TOOL_PERSIST_API_BASE_KEY);
       if (saved && saved.trim()) return saved.trim();
@@ -135,9 +163,9 @@ function App() {
   const [showDebug, setShowDebug] = useState<boolean>(!IS_DEMO);
 
   // Tool safety gate: user must explicitly acknowledge before enabling BYOK verify
-  const [toolAck, setToolAck] = useState<boolean>(IS_DEMO ? true : false);
+  const [toolAck, setToolAck] = useState<boolean>(IS_DEMO);
 
-  // Action payload (meaningful; demo shows what “action-bound” means)
+  // Action payload
   const [actionKind, setActionKind] = useState<ActionKind>("ACTION_COMMIT");
   const [actionType, setActionType] = useState<string>("PAYOUT_RELEASE");
   const [amount, setAmount] = useState<string>("100.00");
@@ -154,7 +182,7 @@ function App() {
 
   const storedTick = useRef(0);
   const [storedRefresh, setStoredRefresh] = useState(0);
-  const stored = useMemo(() => loadStoredCredential(), [storedRefresh]);
+  const stored = useMemo<StoredCredential>(() => loadStoredCredential(), [storedRefresh]);
 
   // Persist apiBase in TOOL mode only
   useEffect(() => {
@@ -166,7 +194,7 @@ function App() {
 
   // Keep an up-to-date action hash preview
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const payload = {
         kind: actionKind,
         action: actionType,
@@ -177,11 +205,11 @@ function App() {
         origin: typeof window !== "undefined" ? window.location.origin : "unknown"
       };
 
-      const json = stableStringify(payload);
+      const jsonStable = stableStringify(payload);
       setActionJson(JSON.stringify(payload, null, 2));
 
       try {
-        const hex = await sha256Hex(json);
+        const hex = await sha256Hex(jsonStable);
         setActionHashHex(hex);
       } catch {
         setActionHashHex("");
@@ -211,11 +239,12 @@ function App() {
       storedTick.current++;
       setStoredRefresh(storedTick.current);
     } catch (e: unknown) {
-      setStatus(`❌ register_failed: ${String((e as Error)?.message ?? e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`❌ register_failed: ${msg}`);
     }
   }
 
-  async function onClear() {
+  function onClear() {
     clearStoredCredential();
     setStatus("Cleared stored credential");
     setLog("");
@@ -225,7 +254,7 @@ function App() {
     setStoredRefresh(storedTick.current);
   }
 
-  async function onNewNonce() {
+  function onNewNonce() {
     setNonce(randHex(12));
     setStatus("Generated a new nonce");
   }
@@ -277,7 +306,6 @@ function App() {
 
       const payloadStable = stableStringify(payload);
       const actionHash = await sha256Hex(payloadStable);
-
       append({ actionPayload: payload, actionHashHex: actionHash });
 
       // 1) Challenge
@@ -290,7 +318,9 @@ function App() {
       // 2) Attest
       setStatus("Performing presence ceremony (FaceID/TouchID)…");
       const assertion = await attestWithPasskey(s, challengeToBytes(ch.challengeB64Url));
-      append({ assertionPreview: { ...assertion, pubKeyPem: "[redacted]" } });
+
+      const assertionPreview = isRecord(assertion) ? { ...assertion, pubKeyPem: "[redacted]" } : assertion;
+      append({ assertionPreview });
 
       // 3) Verify
       setStatus("Verifying on server…");
@@ -300,25 +330,32 @@ function App() {
 
       append({ verifyResponse: resp });
 
-      const decision = (resp as any)?.decision ?? (resp as any)?.status ?? "UNKNOWN";
-      setLastDecision(String(decision));
+const rec: Record<string, unknown> = isRecord(resp) ? resp : {};
 
-      const receiptHash =
-        (resp as any)?.receiptHashHex ??
-        (resp as any)?.receiptHash ??
-        (resp as any)?.receipt_hash_hex ??
-        (resp as any)?.receipt_hash ??
-        "";
-      if (receiptHash) setLastReceiptHash(String(receiptHash));
+const decision = getString(rec, "decision") ?? getString(rec, "status") ?? "UNKNOWN";
+setLastDecision(decision);
 
-      if ((resp as any)?.ok && (resp as any)?.decision === "PBI_VERIFIED") {
-        setStatus("✅ VERIFIED (receipt minted)");
-      } else {
-        const reason = (resp as any)?.reason ? ` (${String((resp as any).reason)})` : "";
-        setStatus(`❌ verify_failed: ${String(decision)}${reason}`);
-      }
+const receiptHash =
+  getString(rec, "receiptHashHex") ??
+  getString(rec, "receiptHash") ??
+  getString(rec, "receipt_hash_hex") ??
+  getString(rec, "receipt_hash") ??
+  "";
+
+if (receiptHash) setLastReceiptHash(receiptHash);
+
+const ok = rec["ok"] === true;
+const reason = getString(rec, "reason");
+
+if (ok && decision === "PBI_VERIFIED") {
+  setStatus("✅ VERIFIED (receipt minted)");
+} else {
+  const extra = reason ? ` (${reason})` : "";
+  setStatus(`❌ verify_failed: ${decision}${extra}`);
+}
     } catch (e: unknown) {
-      setStatus(`❌ error: ${String((e as Error)?.message ?? e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`❌ error: ${msg}`);
     }
   }
 
@@ -422,12 +459,7 @@ function App() {
           <div className="actionGrid" style={{ marginTop: 12 }}>
             <div className="field">
               <div className="label">Kind</div>
-              <select
-                className="input"
-                value={actionKind}
-                onChange={(e) => setActionKind(e.target.value as ActionKind)}
-                disabled={IS_DEMO}
-              >
+              <select className="input" value={actionKind} onChange={(e) => setActionKind(e.target.value as ActionKind)} disabled={IS_DEMO}>
                 {ACTION_KIND_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -477,7 +509,7 @@ function App() {
             <div className="small" style={{ opacity: 0.9 }}>
               actionHashHex:
             </div>
-<code className="pill mono hashPill">{actionHashHex || "—"}</code>
+            <code className="pill mono hashPill">{actionHashHex || "—"}</code>
             <button className="btn btn-ghost" type="button" onClick={() => safeClipboard(actionHashHex)} disabled={!actionHashHex}>
               Copy
             </button>
@@ -527,7 +559,7 @@ function App() {
             <div className="small" style={{ opacity: 0.9 }}>
               receiptHash:
             </div>
-<code className="pill mono hashPill">{lastReceiptHash}</code>
+            <code className="pill mono hashPill">{lastReceiptHash}</code>
             <button className="btn btn-ghost" type="button" onClick={() => safeClipboard(lastReceiptHash)}>
               Copy
             </button>
@@ -546,7 +578,7 @@ function App() {
             </div>
             <div className="kline" />
             <div style={{ marginTop: 12 }}>
-              <pre className="pre">{stored ? JSON.stringify({ ...stored, pubKeyPem: "[stored]" }, null, 2) : "None (register first)"}</pre>
+              <pre className="pre">{stored ? JSON.stringify({ ...(stored as unknown as Record<string, unknown>), pubKeyPem: "[stored]" }, null, 2) : "None (register first)"}</pre>
             </div>
           </div>
         </div>
@@ -578,4 +610,4 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<App />);
