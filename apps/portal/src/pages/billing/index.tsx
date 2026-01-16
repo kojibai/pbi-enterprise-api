@@ -334,7 +334,7 @@ export default function BillingIndex() {
                   }}
                 />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 950, letterSpacing: 0.2 }}>PBI Assured</div>
+                  <div style={{ fontWeight: 950, letterSpacing: 0.2 }}>Enterprise (PBI Assured)</div>
                   <div style={{ opacity: 0.72, fontSize: 12, marginTop: 2 }}>
                     Procurement-ready for regulated and mission-critical systems.
                   </div>
