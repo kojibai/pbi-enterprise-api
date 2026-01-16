@@ -237,7 +237,7 @@ export default function Home() {
                     <div className="kicker">Usage</div>
                     <div className="mobileTitle">View metering</div>
                     <div className="hint">Monthly challenge + verify totals.</div>
-                    <a className="linkBtn" href="/api-keys#usage">
+                    <a className="linkBtn" href="/usage">
                       Open Usage →
                     </a>
                   </div>
