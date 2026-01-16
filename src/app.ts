@@ -32,6 +32,7 @@ export function makeApp() {
   // Helmet + CSP (supports Redoc on mobile via blob workers)
   app.use(
     helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
@@ -59,7 +60,33 @@ export function makeApp() {
   );
 
   // CORS for portal (credentials required for cookies)
-  const allowedOrigins = new Set<string>(["https://pbi.kojib.com", "http://localhost:3000"]);
+// CORS
+const allowedOrigins = new Set<string>([
+  "https://pbi.kojib.com",
+  "https://tool.kojib.com",
+  "https://demo.kojib.com",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  
+]);
+
+const corsOptions: cors.CorsOptions = {
+  
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // server-to-server / curl
+    if (allowedOrigins.has(origin)) return cb(null, origin); // echo the origin (not boolean)
+    return cb(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["authorization", "content-type"],
+  optionsSuccessStatus: 204,
+  maxAge: 86400
+};
+
+// Handle preflight explicitly (before auth routes)
+app.options("*", cors(corsOptions));
+app.use(cors(corsOptions));
 
   app.use(
     cors({
