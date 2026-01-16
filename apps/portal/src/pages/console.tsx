@@ -229,7 +229,7 @@ export default function Home() {
                     <div className="mobileTitle">Manage keys</div>
                     <div className="hint">Create, revoke, and view all keys.</div>
                     <a className="linkBtn" href="/api-keys">
-                      Open API Keys →
+                    API Keys →
                     </a>
                   </div>
 
@@ -238,7 +238,7 @@ export default function Home() {
                     <div className="mobileTitle">View metering</div>
                     <div className="hint">Monthly challenge + verify totals.</div>
                     <a className="linkBtn" href="/usage">
-                      Open Usage →
+                    Usage →
                     </a>
                   </div>
 
