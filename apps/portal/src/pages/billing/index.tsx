@@ -501,11 +501,6 @@ export default function BillingIndex() {
                       <div ref={calendlyHostRef} />
                     </div>
 
-                    <div style={{ marginTop: 10 }}>
-                      <button className="portalMailLink" type="button" onClick={emailSalesNow}>
-                        Or email sales
-                      </button>
-                    </div>
                   </div>
 
                   <div className="portalModalCard" style={{ background: "rgba(0,0,0,.18)" }}>
