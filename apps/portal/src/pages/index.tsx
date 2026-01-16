@@ -474,23 +474,24 @@ POST /v1/pbi/verify     { assertion }
                   ]}
                 />
 
-                <PlanCard
-                  name="Enterprise (PBI Assured)"
-                  price="Talk to Sales"
-                  period=""
-                  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
-                  bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
-                  bullets={[
-                    "Custom verification capacity + burst",
-                    "SLA / priority support options",
-                    "Security review packet on request",
-                    "Receipts + retention strategy for audits",
-                    "Roadmap alignment for regulated environments"
-                  ]}
-                  ctaLabel="Schedule a call"
-                  ctaOnClick={openSales}
-                  featured
-                />
+<PlanCard
+  name="Enterprise (PBI Assured)"
+  price="Talk to Sales"
+  period=""
+  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
+  bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
+  bullets={[
+    "Paid pilot available (1 endpoint, 2 weeks)",
+    "Custom verification capacity + burst",
+    "SLA / priority support options",
+    "Security review packet on request",
+    "Receipts + retention strategy for audits",
+    "Roadmap alignment for regulated environments"
+  ]}
+  ctaLabel="Schedule a call"
+  ctaOnClick={openSales}
+  featured
+/>
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>

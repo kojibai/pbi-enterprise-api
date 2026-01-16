@@ -312,7 +312,7 @@ export default function BillingIndex() {
 
             <PlanCard
               current={currentPlan === "enterprise"}
-              title="Enterprise"
+              title="Scale"
               subtitle="Authoritative human presence at scale."
               highlights={["Everything in Pro", "Highest monthly verification quota", "Built for irreversible operations"]}
               price={`${PLAN_PRICE.enterprise}/mo`}
@@ -345,6 +345,7 @@ export default function BillingIndex() {
 
               <ul style={ulStyle}>
                 {[
+                "Paid pilot available (1 endpoint, 2 weeks)",
                   "Custom verification capacity + burst",
                   "SLA / priority support options",
                   "Security review packet on request",
