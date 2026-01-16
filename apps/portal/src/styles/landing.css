@@ -489,27 +489,6 @@ body{ margin:0; }
   opacity: .95;
   pointer-events:none;
 }
-.navLink{
-  text-decoration: none;
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-
-.navLink:active{ transform: translateY(0px) scale(.99); }
-
-.navLinkActive{
-  border-color: rgba(120,255,231,.34);
-  background: rgba(120,255,231,.10);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-}
-.kpi{
-  min-height: 84px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-}
-.mobileCard{ padding: 10px; }
-.linkBtn, .linkBtnPrimary{ padding: 10px 12px; }
 
 .emailPill::after{
   content:"";
@@ -572,6 +551,8 @@ body{ margin:0; }
 .kpiDanger .kpiValue{
   color: rgba(255,220,230,.98);
 }
+
+
 /* ======================
    Mint/Teal buttons must always use BLACK text
    (anchors + buttons, all states)
