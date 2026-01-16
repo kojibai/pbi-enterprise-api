@@ -130,6 +130,34 @@ export default function Home() {
   const { planKey: currentPlanKey, uiLabel: planLabel, isPending } = normalizePlan(me?.customer.plan);
   const planUpper = planLabel.toUpperCase();
   const quota = me?.customer.quotaPerMonth ?? "—";
+  const quotaPerMonthNum = useMemo(() => {
+  const raw = (me?.customer.quotaPerMonth ?? "").replace(/,/g, "").trim();
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}, [me?.customer.quotaPerMonth]);
+
+const quotaDisplay = quotaPerMonthNum ? `${fmtInt(quotaPerMonthNum)}/mo` : "—";
+
+const thisMonthKey = useMemo(() => latestMonthKey(usage), [usage]);
+
+const usageThisMonth = useMemo(() => {
+  if (!thisMonthKey) return 0;
+  return usage
+    .filter((r) => (r.month_key ?? "").trim() === thisMonthKey)
+    .reduce((s, r) => s + toNum(r.total), 0);
+}, [usage, thisMonthKey]);
+
+const quotaRemaining = useMemo(() => {
+  if (!quotaPerMonthNum) return null;
+  const left = quotaPerMonthNum - usageThisMonth;
+  return left >= 0 ? left : 0;
+}, [quotaPerMonthNum, usageThisMonth]);
+
+const quotaOver = useMemo(() => {
+  if (!quotaPerMonthNum) return null;
+  const over = usageThisMonth - quotaPerMonthNum;
+  return over > 0 ? over : 0;
+}, [quotaPerMonthNum, usageThisMonth]);
 
   const usageTotal = useMemo(() => usage.reduce((s, r) => s + toNum(r.total), 0), [usage]);
   const usageByKind = useMemo(() => {
@@ -163,6 +191,17 @@ function EmailText({ email }: { email: string }) {
       )}
     </span>
   );
+}
+
+function fmtInt(n: number) {
+  return n.toLocaleString();
+}
+
+function latestMonthKey(rows: UsageRow[]): string | null {
+  const ks = rows.map((r) => (r.month_key ?? "").trim()).filter(Boolean);
+  if (!ks.length) return null;
+  ks.sort(); // YYYY-MM sorts naturally
+  return ks[ks.length - 1] ?? null;
 }
   return (
     <div className="console">
@@ -233,14 +272,17 @@ function EmailText({ email }: { email: string }) {
   </div>
 </div>
                 <p className="lead">Keys mint access. Usage is metered. Invoices are auditable.</p>
-
-                <div className="kpiRow">
-                  <KPI label="Plan" value={planUpper} />
-                  <KPI label="Quota" value={`${quota}/mo`} />
-                  <KPI label="Usage total" value={usageTotal.toLocaleString()} />
-                  <KPI label="Active keys" value={activeKeys.length.toString()} />
-                </div>
-
+<div className="kpiRow kpiRow5">
+  <KPI label="Plan" value={planUpper} />
+  <KPI label="Quota" value={quotaDisplay} />
+  <KPI label="This month" value={fmtInt(usageThisMonth)} />
+  <KPI
+    label="Remaining"
+    value={quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}
+    tone={quotaOver != null && quotaOver > 0 ? "danger" : "ok"}
+  />
+  <KPI label="Active keys" value={activeKeys.length.toString()} />
+</div>
                 {isPending ? (
                   <div className="pendingCallout" role="status">
                     <div className="pendingTitle">Pending billing activation</div>
@@ -402,10 +444,27 @@ function EmailText({ email }: { email: string }) {
                 </div>
 
                 <div className="sideBody">
-                  <div className="miniRow">
-                    <div className="miniK">Monthly quota</div>
-                    <div className="miniV">{quota}</div>
-                  </div>
+ <div className="miniRow">
+  <div className="miniK">Monthly quota</div>
+  <div className="miniV">{quotaDisplay}</div>
+</div>
+
+<div className="miniRow">
+  <div className="miniK">This month</div>
+  <div className="miniV">{fmtInt(usageThisMonth)}</div>
+</div>
+
+<div className="miniRow">
+  <div className="miniK">Remaining</div>
+  <div className="miniV">{quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}</div>
+</div>
+
+{quotaOver != null && quotaOver > 0 ? (
+  <div className="miniRow">
+    <div className="miniK">Overage</div>
+    <div className="miniV">{fmtInt(quotaOver)}</div>
+  </div>
+) : null}
                   <div className="miniRow">
                     <div className="miniK">Metering</div>
                     <div className="miniV">challenge + verify</div>
@@ -572,9 +631,17 @@ function EmailText({ email }: { email: string }) {
   );
 }
 
-function KPI({ label, value }: { label: string; value: string }) {
+function KPI({
+  label,
+  value,
+  tone
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "danger";
+}) {
   return (
-    <div className="kpi">
+    <div className={`kpi ${tone === "danger" ? "kpiDanger" : ""}`}>
       <div className="kpiLabel">{label}</div>
       <div className="kpiValue">{value}</div>
     </div>

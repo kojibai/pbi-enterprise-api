@@ -27,11 +27,6 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/api-keys": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/api-keys.js"
-    ],
     "/login": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
