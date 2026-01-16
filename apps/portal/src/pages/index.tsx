@@ -352,13 +352,6 @@ POST /v1/pbi/verify     { assertion }
                   <FlowRow a="UP+UV" b="verify" />
                   <FlowRow a="receiptHash" b="audit" />
                 </div>
-
-                <div className="pbi-sideActions">
-                  <a className="pbi-btnPrimary" href={DEMO_URL} target="_blank" rel="noreferrer">
-                    Open demo →
-                  </a>
-                  <div className="pbi-smallNote">No keys required.</div>
-                </div>
               </aside>
             </div>
           </section>
