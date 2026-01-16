@@ -49,20 +49,24 @@ function fmtDateTime(d: Date) {
     return String(d);
   }
 }
-
 function monthKeyToDate(monthKey: string): Date | null {
-  // monthKey: YYYY-MM
   const m = (monthKey ?? "").trim();
-  if (!/^\d{4}-\d{2}$/.test(m)) return null;
-  const d = new Date(`${m}-01T00:00:00.000Z`);
-  return Number.isFinite(d.getTime()) ? d : null;
+  const match = /^(\d{4})-(\d{2})$/.exec(m);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]); // 1-12
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+
+  // Use mid-month at noon UTC so it never shifts across months in any timezone.
+  return new Date(Date.UTC(year, month - 1, 15, 12, 0, 0));
 }
 
 function fmtMonthKey(monthKey: string) {
   const d = monthKeyToDate(monthKey);
   if (!d) return monthKey;
   try {
-    return new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" }).format(d);
+    return new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric", timeZone: "UTC" }).format(d);
   } catch {
     return monthKey;
   }
@@ -173,7 +177,17 @@ export default function UsagePage() {
   const currentMonthTotal = currentMonth?.total ?? 0;
 
   const quotaFill = quotaPerMonthNum > 0 ? clamp01(currentMonthTotal / quotaPerMonthNum) : 0;
+const quotaRemaining = useMemo(() => {
+  if (quotaPerMonthNum <= 0) return null;
+  const left = quotaPerMonthNum - currentMonthTotal;
+  return left >= 0 ? left : 0;
+}, [quotaPerMonthNum, currentMonthTotal]);
 
+const quotaOver = useMemo(() => {
+  if (quotaPerMonthNum <= 0) return null;
+  const over = currentMonthTotal - quotaPerMonthNum;
+  return over > 0 ? over : 0;
+}, [quotaPerMonthNum, currentMonthTotal]);
   const kindOptions = useMemo(() => ["__TOTAL__", ...normalized.kinds], [normalized.kinds]);
 
   // Selected series values
@@ -266,12 +280,17 @@ export default function UsagePage() {
                   Usage is metered automatically (challenge + verify). Use this view for capacity planning, auditing, and rollout coverage.
                 </p>
 
-                <div className="kpiRow">
-                  <KPI label="Plan" value={planLabel} />
-                  <KPI label="Quota (month)" value={quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"} />
-                  <KPI label="This month" value={fmtInt(currentMonthTotal)} />
-                  <KPI label="All shown" value={fmtInt(totalAll)} />
-                </div>
+<div className="kpiRow kpiRow5">
+  <KPI label="Plan" value={planLabel} />
+  <KPI label="Quota (month)" value={quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"} />
+  <KPI label="This month" value={fmtInt(currentMonthTotal)} />
+  <KPI
+    label="Remaining"
+    value={quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}
+    tone={quotaOver != null && quotaOver > 0 ? "danger" : "ok"}
+  />
+  <KPI label="All shown" value={fmtInt(totalAll)} />
+</div>
 
                 {isPending ? (
                   <div className="pendingCallout" role="status">
@@ -353,12 +372,18 @@ export default function UsagePage() {
                   <QuotaGauge
                     fill={quotaFill}
                     pctLabel={quotaPerMonthNum ? fmtPctSmart(quotaFill) : "—"}
-                    label={`${fmtInt(currentMonthTotal)} / ${quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"}`}
-                    subLabel={
-                      quotaPerMonthNum
-                        ? `~${fmtPctSmart(quotaFill)} of quota · ${fmtRangeLabel(seriesStart, seriesEnd)}`
-                        : `No quota detected · ${fmtRangeLabel(seriesStart, seriesEnd)}`
-                    }
+                    label={
+  quotaPerMonthNum
+    ? `${fmtInt(currentMonthTotal)} / ${fmtInt(quotaPerMonthNum)} · ${fmtInt(quotaRemaining ?? 0)} left`
+    : `${fmtInt(currentMonthTotal)} / —`
+}
+subLabel={
+  quotaPerMonthNum
+    ? quotaOver != null && quotaOver > 0
+      ? `Over quota by ${fmtInt(quotaOver)} · ${fmtRangeLabel(seriesStart, seriesEnd)}`
+      : `Remaining ${fmtInt(quotaRemaining ?? 0)} · ${fmtRangeLabel(seriesStart, seriesEnd)}`
+    : `No quota detected · ${fmtRangeLabel(seriesStart, seriesEnd)}`
+}
                   />
 
                   <div className="divider" />
@@ -481,10 +506,17 @@ function EmailText({ email }: { email: string }) {
     </span>
   );
 }
-
-function KPI({ label, value }: { label: string; value: string }) {
+function KPI({
+  label,
+  value,
+  tone
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "danger";
+}) {
   return (
-    <div className="kpi">
+    <div className={`kpi ${tone === "danger" ? "kpiDanger" : ""}`}>
       <div className="kpiLabel">{label}</div>
       <div className="kpiValue">{value}</div>
     </div>
