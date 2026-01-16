@@ -33,3 +33,19 @@ No end-user accounts. Customers are API-key holders. Proofs are bound to:
 - action payload hash OR artifact hash
 - nonce + expiry
 - WebAuthn “user present + user verified” flags
+
+## Licensing (AGPL + Commercial)
+
+This project is **dual-licensed**:
+
+- **AGPL-3.0-or-later** for open source use.
+  - If you modify and run this as a network service, AGPL requires you to provide the source code of your modified version to users.
+
+- **Commercial License** for proprietary use.
+  - If you want to run this as SaaS without releasing modifications, embed it in closed-source software, or distribute it under proprietary terms, you must obtain a commercial license.
+
+See:
+- `LICENSE`
+- `LICENSE-AGPL-3.0.txt`
+- `COMMERCIAL_LICENSE.md`
+- `TRADEMARKS.md`

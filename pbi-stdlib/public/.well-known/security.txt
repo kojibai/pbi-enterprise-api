@@ -1,0 +1,6 @@
+Contact: mailto:security@kojib.com
+Preferred-Languages: en
+Canonical: https://pbi.kojib.com/.well-known/security.txt
+Policy: https://pbi.kojib.com/security
+Hiring: https://pbi.kojib.com/careers
+Expires: 2026-12-31T00:00:00Z

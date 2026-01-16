@@ -1,0 +1,35 @@
+{
+  "name": "pbi-verify",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "pbi-verify": "./dist/bin/pbi-verify.js",
+    "pbi-pack-demo": "./dist/bin/pbi-pack-demo.js",
+    "pbi-pack-seal": "./dist/bin/pbi-pack-seal.js",
+    "pbi-pack-verify": "./dist/bin/pbi-pack-verify.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "verify:vectors": "node dist/scripts/verify-vectors.js",
+    "demo": "rm -rf dist && npm run build && node dist/bin/pbi-pack-demo.js --packSrc ../pbi-pack --outDir ../pbi-pack-demo --privkey ./issuer-es256-private.pem --trust ./trust.json"
+
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

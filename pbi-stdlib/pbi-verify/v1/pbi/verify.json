@@ -1,0 +1,14 @@
+{
+  "decision": "accept",
+  "receiptHash": "hex",
+  "actionHash": "hex",
+  "challengeId": "string",
+  "aud": "string",
+  "purpose": "string",
+  "verifiedAt": "RFC3339",
+  "serverSig": {
+    "alg": "ed25519",
+    "kid": "pbi-server-01",
+    "sig": "base64url"
+  }
+}

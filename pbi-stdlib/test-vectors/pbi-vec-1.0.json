@@ -1,0 +1,245 @@
+{
+  "ver": "pbi-vec-1.0",
+  "spec": "pbi-spec-1.0",
+  "notes": {
+    "webauthn_sig_base": "authenticatorData || sha256(clientDataJSON_bytes)",
+    "sig_format": "DER-encoded ECDSA signature bytes (WebAuthn default)",
+    "clientDataJSON_encoding": "Fixed JSON encoding for determinism in vectors; real browsers may order keys differently."
+  },
+  "rp": {
+    "rpId": "api.kojib.com",
+    "origin_allowed": [
+      "https://pbi.kojib.com"
+    ],
+    "publicKeyJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "W8_PfRa9irdS-WGFsB66juDYRSPI29ARzcS92i1Ir-4",
+      "y": "ckNAYM1FeQJ6a_QUkAeH9ZratCysEZW_6b1Hyna6BRU",
+      "ext": true
+    },
+    "credId_b64url": "Y3JlZC0wMS1wYmktdGVzdA"
+  },
+  "vectors": {
+    "valid_01": {
+      "desc": "Valid receipt: origin ok, rpId ok, actionHash matches, signature valid.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "13.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg"
+        }
+      },
+      "expect": {
+        "result": "ok",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "receiptHash": "2da1b25980ed79a3b42b23a9553d426fd87112727d1c0214772239412d378e21",
+        "rpIdHash_b64url": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63E",
+        "clientDataHash_b64url": "VYJvwvF65xXrKjYstVBD9eBoKlfCvIsEPeDXZf_3oo4",
+        "sigBase_b64url": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAVWCb8LxeucV6yo2LLVQQ_XgaCpXwryLBD3g12X_96KO",
+        "signatureDer_b64url": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg",
+        "signature_r_hex": "2e3e3ce2a9dd3bc22547a2af13e894cefa9829ffeebf4c1f0474533a80840c0d",
+        "signature_s_hex": "2bd36fe99c601c1a2b15565a9ce2a64b301d79490290ec8b922c98af5e23fbb6",
+        "flags_hex": "05",
+        "signCount": 1
+      }
+    },
+    "invalid_origin_01": {
+      "desc": "Invalid origin: clientDataJSON origin not allowed.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "13.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vZXZpbC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "code": "origin_not_allowed",
+        "receiptHash": "3087c32087dec8bb019beffb5bcfae9a88451357d995739e08438b57863b5082"
+      }
+    },
+    "action_hash_mismatch_01": {
+      "desc": "Action tampered: recomputed actionHash differs from receipt.actionHash.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "14.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "code": "action_hash_mismatch"
+      }
+    },
+    "invalid_signature_01": {
+      "desc": "Invalid signature: signature bytes modified.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "13.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tw"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "code": "signature_invalid"
+      }
+    },
+    "rpId_not_allowed_01": {
+      "desc": "Invalid rpId policy: rpIdAllowList does not include the RP used to produce authenticatorData.rpIdHash.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "13.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "code": "rpId_not_allowed"
+      }
+    },
+    "challenge_used_01": {
+      "desc": "Challenge replay prevention: challengeStore reports usedAt already set, so receipt must be rejected.",
+      "action": {
+        "ver": "pbi-action-1.0",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "method": "POST",
+        "path": "/v1/phi/transfer",
+        "query": "",
+        "params": {
+          "to": "phi_1q2w3e4r5t",
+          "amountPhi": "13.000000",
+          "nonce": "00000001"
+        }
+      },
+      "receipt": {
+        "ver": "pbi-receipt-1.0",
+        "challengeId": "chal_test_0001",
+        "challenge": "sLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLA",
+        "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
+        "aud": "pbi.kojib.com",
+        "purpose": "transfer",
+        "authorSig": {
+          "alg": "webauthn-es256",
+          "credId": "Y3JlZC0wMS1wYmktdGVzdA",
+          "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQ3dzTEN3c0xDd3NMQSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEQCIC4-POKp3TvCJUeirxPolM76mCn_7r9MHwR0UzqAhAwNAiAr02_pnGAcGisVVlqc4qZLMB15SQKQ7IuSLJivXiP7tg"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "code": "challenge_used"
+      }
+    }
+  }
+}

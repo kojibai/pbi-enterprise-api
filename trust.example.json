@@ -1,0 +1,13 @@
+{
+  "ver": "pbi-trust-1.0",
+  "trustedIssuers": [
+    {
+      "keyId": "REPLACE_WITH_REAL_KEYID",
+      "pubKeyJwk": { "kty": "EC", "crv": "P-256", "x": "REPLACE", "y": "REPLACE" },
+      "issuer": { "name": "Kojib PBI", "aud": "pbi.kojib.com" },
+      "notBefore": "2026-01-01T00:00:00Z",
+      "notAfter": null
+    }
+  ],
+  "revokedKeyIds": []
+}

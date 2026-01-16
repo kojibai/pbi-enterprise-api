@@ -1,0 +1,11 @@
+This project is offered under a dual-license model:
+
+1) GNU AGPL v3 (Open Source)
+   - Applies by default to all use, modification, and distribution.
+   - If you run this as a network service and modify it, you must provide source to users.
+
+2) Commercial License
+   - For organizations that want to use this software without AGPL obligations.
+   - See COMMERCIAL_LICENSE.md.
+
+SPDX-License-Identifier: AGPL-3.0-or-later

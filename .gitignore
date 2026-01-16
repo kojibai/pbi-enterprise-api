@@ -1,28 +1,175 @@
-# Node / TS
+# ===========================================
+# pbi-enterprise-api / pbi-stdlib — MAX SAFE
+# Goal: never leak keys, trust roots, packs, or
+# any proof artifacts that could be sensitive.
+# ===========================================
+
+# -----------------------
+# Node / TypeScript build
+# -----------------------
 node_modules/
 dist/
 *.tsbuildinfo
+*.map
 
-# Env / secrets
-.env
-.env.*
-!.env.example
-
-# Logs
+# package managers
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-store/
+
+# -----------------------
+# Logs / runtime junk
+# -----------------------
 logs/
+log/
 *.log
 
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.swp
+tmp/
+temp/
+.cache/
+coverage/
+.nyc_output/
+reports/
+report/
 
-# Docker
+# -----------------------
+# OS / Editor
+# -----------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+.idea/
+*.swp
+*.swo
+
+# -----------------------
+# Env / Secrets
+# -----------------------
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.secrets
+secrets/
+secret/
+private/
+priv/
+
+# -----------------------
+# Keys / Certs / Signing Material (NEVER COMMIT)
+# -----------------------
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.der
+*.csr
+*.p8
+
+# extra belt-and-suspenders patterns
+**/*private*.pem
+**/*issuer*private*
+**/*signing*key*
+**/*kms*
+**/*vault*
+
+# specific known key filenames in your tree
+issuer-es256-private.pem
+issuer-*.pem
+issuer-*-private.pem
+issuer-*-private*.pem
+
+# issuer pubkey: keep real ones private; commit an example instead
+issuer-pubkey.jwk.json
+!issuer-pubkey.example.jwk.json
+
+# -----------------------
+# Trust policy (real trust roots are sensitive)
+# -----------------------
+trust.json
+trust.*.json
+!trust.example.json
+
+# -----------------------
+# PBI Packs / Proofs / Receipts (NEVER COMMIT REAL ONES)
+# -----------------------
+# pack folders you have locally
+pbi-stdlib/pbi-pack/
+pbi-stdlib/pbi-pack-2/
+pbi-stdlib/pbi-pack-demo/
+pbi-stdlib/pbi-pack-demo-*/
+pbi-stdlib/pbi-pack-*/
+
+# generic pack/proof folders anywhere
+pbi-pack/
+pbi-pack-*/
+packs/
+pack/
+proofs/
+receipts/
+actions/
+pubkeys/
+
+# all proof artifacts (portable proofs must not leak if real)
+*.proof.json
+
+# scoped common filenames that appear in packs (avoid blocking docs elsewhere)
+pbi-pack*/manifest.json
+pbi-pack*/receipt*.json
+pbi-pack*/action*.json
+pbi-pack*/pubkey*.json
+
+# also ignore pack files inside pbi-stdlib explicitly
+pbi-stdlib/pbi-pack*/manifest.json
+pbi-stdlib/pbi-pack*/receipts/**/*.json
+pbi-stdlib/pbi-pack*/actions/**/*.json
+pbi-stdlib/pbi-pack*/pubkeys/**/*.json
+pbi-stdlib/pbi-pack*/proofs/**/*.proof.json
+
+# -----------------------
+# Databases / local state
+# -----------------------
+*.sqlite
+*.sqlite3
+*.db
+
+# -----------------------
+# Docker / local volumes
+# -----------------------
 **/.docker/
 docker-data/
+*.pid
+
+# -----------------------
+# Archives / exports
+# -----------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.gz
+*.bz2
+*.xz
+
+# -----------------------
+# Allowlist: safe public fixtures only
+# -----------------------
+# Keep your deterministic, non-sensitive test vectors commit-friendly.
+!test-vectors/
+!test-vectors/**
