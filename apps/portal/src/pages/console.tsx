@@ -147,7 +147,23 @@ export default function Home() {
   }
 
   if (!me) return null;
-
+function EmailText({ email }: { email: string }) {
+  const parts = email.split(/([@.])/);
+  return (
+    <span className="emailInline" aria-label={email}>
+      {parts.map((p, i) =>
+        p === "@" || p === "." ? (
+          <span key={String(i)}>
+            {p}
+            <wbr />
+          </span>
+        ) : (
+          <span key={String(i)}>{p}</span>
+        )
+      )}
+    </span>
+  );
+}
   return (
     <div className="console">
       <style>{css}</style>
@@ -208,7 +224,14 @@ export default function Home() {
                   PBI Client Control Panel
                 </div>
 
-                <h1 className="h1 email">{me.customer.email}</h1>
+               <div className="emailRow">
+  <div className="emailPill" title={me.customer.email}>
+    <span className="emailPillDot" aria-hidden />
+    <span className="emailPillText">
+      <EmailText email={me.customer.email} />
+    </span>
+  </div>
+</div>
                 <p className="lead">Keys mint access. Usage is metered. Invoices are auditable.</p>
 
                 <div className="kpiRow">
