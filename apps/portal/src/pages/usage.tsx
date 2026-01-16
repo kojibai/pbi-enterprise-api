@@ -4,14 +4,22 @@ import { apiJson } from "../lib/api";
 
 type PlanKey = "starter" | "pro" | "enterprise";
 
-type Me = { customer: { id: string; email: string; plan: PlanKey; quotaPerMonth: string } };
+// NOTE: backend may return "pending" before billing is activated
+type Me = { customer: { id: string; email: string; plan: string; quotaPerMonth: string } };
 type UsageRow = { month_key: string; kind: string; total: string };
 
-const PLAN_LABEL: Record<PlanKey, string> = {
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Scale"
-};
+function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
+  const s = String(raw ?? "").toLowerCase().trim();
+
+  if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
+  if (s === "pro") return { planKey: "pro", uiLabel: "Pro", isPending: false };
+  if (s === "enterprise") return { planKey: "enterprise", uiLabel: "Scale", isPending: false };
+
+  if (s === "pending") return { planKey: "starter", uiLabel: "Pending", isPending: true };
+
+  // fallback: never crash
+  return { planKey: "starter", uiLabel: s ? s.toUpperCase() : "Starter", isPending: false };
+}
 
 function toNum(s: string) {
   const n = Number(s);
@@ -77,8 +85,8 @@ export default function UsagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
-  const planKey: PlanKey = (me?.customer.plan ?? "starter") as PlanKey;
-  const planLabel = PLAN_LABEL[planKey].toUpperCase();
+  const { uiLabel: planUiLabel, isPending } = normalizePlan(me?.customer.plan);
+  const planLabel = planUiLabel.toUpperCase();
 
   const quotaPerMonthNum = useMemo(() => {
     const raw = (me?.customer.quotaPerMonth ?? "").replace(/,/g, "").trim();
@@ -217,10 +225,27 @@ export default function UsagePage() {
 
                 <div className="kpiRow">
                   <KPI label="Plan" value={planLabel} />
-                  <KPI label="Quota (month)" value={quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : (me.customer.quotaPerMonth ?? "—")} />
+                  <KPI label="Quota (month)" value={quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"} />
                   <KPI label="This month" value={fmtInt(currentMonthTotal)} />
                   <KPI label="All shown" value={fmtInt(totalAll)} />
                 </div>
+
+                {isPending ? (
+                  <div className="pendingCallout" role="status">
+                    <div className="pendingTitle">Pending billing activation</div>
+                    <div className="pendingBody">
+                      Your account is in <b>pending</b> state. Activate billing to start quota enforcement and metering at your selected plan.
+                    </div>
+                    <div className="pendingBtns">
+                      <Link className="btnPrimaryLink" href="/billing">
+                        Activate billing →
+                      </Link>
+                      <Link className="btnGhostLink" href="/api-keys">
+                        Manage keys →
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
 
                 {err ? <div className="error">{err}</div> : null}
 
@@ -279,12 +304,15 @@ export default function UsagePage() {
                 </div>
 
                 <div className="sideBody">
-                  <QuotaGauge fill={quotaFill} label={`${fmtInt(currentMonthTotal)} / ${quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"}`} />
+                  <QuotaGauge
+                    fill={quotaFill}
+                    label={`${fmtInt(currentMonthTotal)} / ${quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"}`}
+                  />
 
                   <div className="divider" />
 
                   <div className="hint">
-                    Tip: set enforcement points gradually—gate the irreversible endpoints first, then expand coverage as you validate UX.
+                    Tip: gate irreversible endpoints first. Expand coverage after you validate UX and failure modes.
                   </div>
                 </div>
               </aside>
@@ -299,7 +327,9 @@ export default function UsagePage() {
                   <div className="kicker">Trend</div>
                   <div className="panelTitle">{selectedKind === "__TOTAL__" ? "Total usage" : selectedKind}</div>
                 </div>
-                <div className="panelMeta">{normalized.series.length ? `${normalized.series[0].month} → ${normalized.series[normalized.series.length - 1].month}` : "—"}</div>
+                <div className="panelMeta">
+                  {normalized.series.length ? `${normalized.series[0].month} → ${normalized.series[normalized.series.length - 1].month}` : "—"}
+                </div>
               </div>
 
               <LineChart
@@ -471,24 +501,15 @@ function LineChart({
     <div>
       <div className="chartWrap">
         <svg viewBox={`0 0 ${width} ${height}`} className="chartSvg" aria-label="Usage trend chart" role="img">
-          {/* grid */}
           {Array.from({ length: 5 }).map((_, i) => {
             const y = padY + (i / 4) * innerH;
             return <line key={i} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
           })}
-
-          {/* area */}
           <path d={areaPath} className="chartArea" />
-
-          {/* line */}
           <path d={path} className="chartLine" />
-
-          {/* points */}
           {coords.map((c) => (
             <circle key={c.m} cx={c.x} cy={c.y} r={4.2} className="chartDot" />
           ))}
-
-          {/* last label */}
           {last ? (
             <g>
               <circle cx={last.x} cy={last.y} r={6.2} className="chartDotHot" />
@@ -499,7 +520,6 @@ function LineChart({
           ) : null}
         </svg>
       </div>
-
       <div className="chartFoot">{footer}</div>
     </div>
   );
@@ -525,20 +545,17 @@ function BarBreakdown({
   const max = Math.max(1, ...series.map((s) => s.total));
   const barW = series.length ? innerW / series.length : innerW;
 
-  // pseudo “palette” via CSS classes (no hardcoded colors in JS)
-  const kindClass = (k: string, i: number) => `barSeg barSeg${(i % 4) + 1}`;
+  const kindClass = (_k: string, i: number) => `barSeg barSeg${(i % 4) + 1}`;
 
   return (
     <div>
       <div className="chartWrap">
         <svg viewBox={`0 0 ${width} ${height}`} className="chartSvg" aria-label="Usage breakdown chart" role="img">
-          {/* grid */}
           {Array.from({ length: 5 }).map((_, i) => {
             const y = padY + (i / 4) * innerH;
             return <line key={i} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
           })}
 
-          {/* bars */}
           {series.map((s, idx) => {
             const x0 = padX + idx * barW + 6;
             const w = Math.max(2, barW - 12);
@@ -550,18 +567,17 @@ function BarBreakdown({
 
               const h = (v / max) * innerH;
               const y = padY + innerH - ((acc + v) / max) * innerH;
-
               acc += v;
 
-              return (
-                <g key={`${s.month}:${k}`}>
-                  <rect x={x0} y={y} width={w} height={h} rx={10} className={kindClass(k, i)} />
-                </g>
-              );
+              return <rect key={`${s.month}:${k}`} x={x0} y={y} width={w} height={h} rx={10} className={kindClass(k, i)} />;
             });
 
-            // hover tooltip via <title>
-            const tooltip = `${s.month}\n` + Object.entries(s.byKind).map(([k, v]) => `${k}: ${fmtInt(v)}`).join("\n") + `\nTotal: ${fmtInt(s.total)}`;
+            const tooltip =
+              `${s.month}\n` +
+              Object.entries(s.byKind)
+                .map(([k, v]) => `${k}: ${fmtInt(v)}`)
+                .join("\n") +
+              `\nTotal: ${fmtInt(s.total)}`;
 
             return (
               <g key={s.month}>
@@ -589,7 +605,7 @@ function BarBreakdown({
 
 function QuotaGauge({ fill, label }: { fill: number; label: string }) {
   const pct = clamp01(fill);
-  const deg = Math.round(pct * 270); // 3/4 circle feel
+  const deg = Math.round(pct * 270);
   return (
     <div className="gauge">
       <div className="gaugeRing" style={{ ["--deg" as any]: `${deg}deg` }} aria-hidden />
@@ -601,7 +617,7 @@ function QuotaGauge({ fill, label }: { fill: number; label: string }) {
   );
 }
 
-/* ---------- CSS (matches your console style language) ---------- */
+/* ---------- CSS ---------- */
 
 const css = `
 :root{
@@ -717,7 +733,6 @@ a{ color: inherit; }
 .navLink:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 .navLinkActive{ border-color: rgba(120,255,231,.28); background: rgba(120,255,231,.08); }
 
-/* Mobile nav scroll */
 @media (max-width: 820px){
   .topbar{ grid-template-columns: 1fr; gap: 10px; }
   .nav{
@@ -812,6 +827,42 @@ a{ color: inherit; }
 .kpiLabel{ font-size: 11px; color: rgba(255,255,255,.56); }
 .kpiValue{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
 
+/* Pending */
+.pendingCallout{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,190,120,.28);
+  background: rgba(255,190,120,.10);
+}
+.pendingTitle{ font-weight: 950; }
+.pendingBody{ margin-top: 6px; font-size: 13px; opacity: .92; line-height: 1.5; }
+.pendingBtns{ margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; }
+.btnPrimaryLink{
+  border-radius: 16px;
+  padding: 11px 14px;
+  font-weight: 950;
+  border: 1px solid rgba(120,255,231,.55);
+  background: rgba(120,255,231,.95);
+  color: #05070e;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.btnGhostLink{
+  border-radius: 16px;
+  padding: 11px 14px;
+  font-weight: 950;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
 /* Controls */
 .ctlRow{
   margin-top: 12px;
@@ -840,9 +891,8 @@ a{ color: inherit; }
   box-shadow: 0 0 0 6px rgba(120,255,231,.10), 0 0 28px rgba(120,255,231,.22);
 }
 
-/* Segment control */
+/* Segment */
 .seg{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.22); border-radius: 18px; padding: 10px; box-shadow: var(--shadow3); }
-.segWide{ }
 .segLabel{ font-size: 11px; color: rgba(255,255,255,.60); }
 .segBtns{ margin-top: 10px; display:flex; gap: 8px; flex-wrap: wrap; }
 .segBtn{
@@ -858,10 +908,7 @@ a{ color: inherit; }
   line-height: 1;
 }
 .segBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
-.segBtnActive{
-  border-color: rgba(120,255,231,.28);
-  background: rgba(120,255,231,.10);
-}
+.segBtnActive{ border-color: rgba(120,255,231,.28); background: rgba(120,255,231,.10); }
 
 /* Buttons */
 .error{
@@ -939,7 +986,6 @@ a{ color: inherit; }
       rgba(120,255,231,.95) 0 var(--deg),
       rgba(255,255,255,.10) var(--deg) 270deg,
       transparent 270deg 360deg);
-  filter: blur(0px);
   opacity: .95;
 }
 .gaugeCore{
@@ -958,11 +1004,7 @@ a{ color: inherit; }
 .gaugeLabel{ margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.72); line-height:1.4; }
 
 /* Panels */
-.grid2{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
+.grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 980px){ .grid2{ grid-template-columns: 1fr; } }
 
 .panel{
@@ -996,7 +1038,6 @@ a{ color: inherit; }
 .chartText{ fill: rgba(255,255,255,.86); font-size: 14px; font-weight: 900; }
 .chartFoot{ margin-top: 10px; font-size: 12px; opacity: .72; line-height: 1.5; }
 
-/* Bars palette via CSS only (premium, consistent) */
 .barSeg{ opacity: .95; }
 .barSeg1{ fill: rgba(120,255,231,.78); }
 .barSeg2{ fill: rgba(154,170,255,.62); }
@@ -1004,12 +1045,7 @@ a{ color: inherit; }
 .barSeg4{ fill: rgba(255,138,160,.46); }
 
 /* Legend */
-.legend{
-  margin-top: 10px;
-  display:flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.legend{ margin-top: 10px; display:flex; flex-wrap: wrap; gap: 10px; }
 .legendItem{ display:flex; align-items:center; gap: 8px; }
 .legendSwatch{
   width: 12px; height: 12px; border-radius: 4px;
@@ -1068,10 +1104,6 @@ a{ color: inherit; }
 .footer a{ color: rgba(120,255,231,.9); text-decoration:none; }
 .footer a:hover{ text-decoration: underline; }
 
-@media (max-width: 980px){
-  .side{ display:none; }
-}
-@media (max-width: 820px){
-  .right{ text-align:left; }
-}
+@media (max-width: 980px){ .side{ display:none; } }
+@media (max-width: 820px){ .right{ text-align:left; } }
 `;

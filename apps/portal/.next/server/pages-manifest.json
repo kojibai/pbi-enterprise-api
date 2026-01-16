@@ -3,8 +3,5 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/login": "pages/login.js",
-  "/usage": "pages/usage.js",
-  "/api-keys": "pages/api-keys.js",
-  "/": "pages/index.js",
-  "/billing": "pages/billing.js"
+  "/": "pages/index.js"
 }

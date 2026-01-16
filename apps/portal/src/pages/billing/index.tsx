@@ -7,7 +7,8 @@ type MeResp = {
   customer: {
     id: string;
     email: string;
-    plan: PlanKey;
+    // NOTE: backend may return "pending"
+    plan: string;
     quotaPerMonth: string;
   };
 };
@@ -32,6 +33,37 @@ const PLAN_PRICE: Record<PlanKey, string> = {
   pro: "$499",
   enterprise: "$1,999"
 };
+
+// Display labels (keep PlanKey as-is, but show "Scale" to users)
+const PLAN_LABEL: Record<PlanKey, string> = {
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Scale"
+};
+
+// ✅ EDIT THESE 3 NUMBERS to match your server-enforced quotas
+const PLAN_QUOTA: Record<PlanKey, number> = {
+  starter: 10_000,
+  pro: 100_000,
+  enterprise: 1_000_000
+};
+
+function fmtInt(n: number) {
+  return n.toLocaleString();
+}
+
+function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
+  const s = String(raw ?? "").toLowerCase().trim();
+
+  if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
+  if (s === "pro") return { planKey: "pro", uiLabel: "Pro", isPending: false };
+  if (s === "enterprise") return { planKey: "enterprise", uiLabel: "Scale", isPending: false };
+
+  if (s === "pending") return { planKey: "starter", uiLabel: "Pending", isPending: true };
+
+  // fallback: never crash
+  return { planKey: "starter", uiLabel: s ? s.toUpperCase() : "Starter", isPending: false };
+}
 
 export default function BillingIndex() {
   const [me, setMe] = useState<MeResp["customer"] | null>(null);
@@ -104,13 +136,24 @@ export default function BillingIndex() {
     }
   }
 
-  const currentPlan: PlanKey = me?.plan ?? "starter";
+  const { planKey: currentPlanKey, uiLabel: currentPlanLabel, isPending } = normalizePlan(me?.plan);
+
+  const quotaShown = (() => {
+    const q = (me?.quotaPerMonth ?? "").replace(/,/g, "").trim();
+    const qNum = Number(q);
+    const hasQuota = Number.isFinite(qNum) && qNum > 0;
+    if (hasQuota) return me?.quotaPerMonth ?? "—";
+    if (isPending) return "—";
+    return fmtInt(PLAN_QUOTA[currentPlanKey]);
+  })();
 
   const canCheckout = (plan: PlanKey) => {
     if (!me) return false;
     if (busy !== null) return false;
     return !!PRICE_IDS[plan];
   };
+
+  const isCurrent = (plan: PlanKey) => !isPending && currentPlanKey === plan;
 
   // ---------- PBI ASSURED MODAL (INLINE CALENDLY, ALWAYS RELOADS) ----------
   const [assuredOpen, setAssuredOpen] = useState(false);
@@ -120,7 +163,6 @@ export default function BillingIndex() {
   const calendlyHostRef = useRef<HTMLDivElement | null>(null);
 
   function openAssured() {
-    // Force a clean Calendly remount every open
     setCalendlyKey((k) => k + 1);
     setAssuredOpen(true);
   }
@@ -158,10 +200,8 @@ export default function BillingIndex() {
       const host = calendlyHostRef.current;
       if (!host) return;
 
-      // Hard reset the host each time
       host.innerHTML = "";
 
-      // Fresh widget container each open
       const widget = document.createElement("div");
       widget.className = "calendly-inline-widget";
       widget.setAttribute("data-url", calendlyEmbedUrl);
@@ -169,7 +209,6 @@ export default function BillingIndex() {
       widget.style.height = "700px";
       host.appendChild(widget);
 
-      // If Calendly global is available, explicitly init
       const w = window as any;
       if (w.Calendly && typeof w.Calendly.initInlineWidget === "function") {
         try {
@@ -178,7 +217,7 @@ export default function BillingIndex() {
             parentElement: widget
           });
         } catch {
-          // no-op: widget.js may auto-init
+          // no-op
         }
       }
     }
@@ -223,23 +262,7 @@ export default function BillingIndex() {
       window.removeEventListener("mousedown", onMouseDown);
     };
   }, [assuredOpen]);
-// Display labels (keep PlanKey as-is, but show "Scale" to users)
-const PLAN_LABEL: Record<PlanKey, string> = {
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Scale"
-};
 
-// ✅ EDIT THESE 3 NUMBERS to match your server-enforced quotas
-const PLAN_QUOTA: Record<PlanKey, number> = {
-  starter: 10_000,
-  pro: 100_000,
-  enterprise: 1_000_000
-};
-
-function fmtInt(n: number) {
-  return n.toLocaleString();
-}
   return (
     <div style={pageStyle}>
       <style>{css}</style>
@@ -261,6 +284,9 @@ function fmtInt(n: number) {
             <Link href="/api-keys" className="portalNavLink">
               API Keys
             </Link>
+            <Link href="/usage" className="portalNavLink">
+              Usage
+            </Link>
             <Link href="/terms" className="portalNavLink">
               Terms
             </Link>
@@ -276,12 +302,19 @@ function fmtInt(n: number) {
 
             <div className="currentPill" aria-label="Current plan">
               <span style={{ opacity: 0.75 }}>Current</span>
-              <span style={{ fontWeight: 950, letterSpacing: 0.3 }}>{PLAN_LABEL[currentPlan].toUpperCase()}</span>
-<span style={{ opacity: 0.75 }}>
-  {me?.quotaPerMonth ? me.quotaPerMonth : fmtInt(PLAN_QUOTA[currentPlan])}/mo
-</span>
+              <span style={{ fontWeight: 950, letterSpacing: 0.3 }}>{currentPlanLabel.toUpperCase()}</span>
+              <span style={{ opacity: 0.75 }}>{quotaShown}/mo</span>
             </div>
           </div>
+
+          {isPending ? (
+            <div className="pendingCallout" role="status">
+              <div className="pendingTitle">Pending billing activation</div>
+              <div className="pendingBody">
+                Your account is in <b>pending</b> state. Pick a plan to activate billing and start metering.
+              </div>
+            </div>
+          ) : null}
 
           {err ? <div style={errorStyle}>{err}</div> : null}
 
@@ -299,51 +332,67 @@ function fmtInt(n: number) {
 
           <div className="planGrid">
             <PlanCard
-              current={currentPlan === "starter"}
+              current={isCurrent("starter")}
               title="Starter"
               subtitle="Ship presence verification fast."
               highlights={[
-  "Presence verification core (UP+UV)",
-  `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo (enforced automatically)`,
-  "Audit-ready receipts (receiptId + receiptHash)"
-]}
+                "Presence verification core (UP+UV)",
+                `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo (enforced automatically)`,
+                "Audit-ready receipts (receiptId + receiptHash)"
+              ]}
               price={`${PLAN_PRICE.starter}/mo`}
-              ctaLabel={currentPlan === "starter" ? "Current plan" : "Switch to Starter"}
-              disabled={!me || currentPlan === "starter" || !canCheckout("starter")}
+              ctaLabel={
+                isCurrent("starter")
+                  ? "Current plan"
+                  : busy === "starter"
+                  ? "Redirecting…"
+                  : isPending
+                  ? "Start Starter"
+                  : "Switch to Starter"
+              }
+              disabled={!me || isCurrent("starter") || !canCheckout("starter")}
               accent="mint"
               note={!PRICE_IDS.starter ? "Set NEXT_PUBLIC_STRIPE_PRICE_STARTER" : "Best for first production gates."}
               onClick={() => startCheckout("starter")}
             />
 
             <PlanCard
-              current={currentPlan === "pro"}
+              current={isCurrent("pro")}
               title="Pro"
               subtitle="Higher throughput + wider coverage."
-              highlights={[
-  "Everything in Starter",
-  `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
-  "Priority processing"
-]}
+              highlights={["Everything in Starter", `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`, "Priority processing"]}
               price={`${PLAN_PRICE.pro}/mo`}
-              ctaLabel={currentPlan === "pro" ? "Current plan" : busy === "pro" ? "Redirecting…" : "Upgrade to Pro"}
-              disabled={!me || currentPlan === "pro" || !canCheckout("pro")}
+              ctaLabel={
+                isCurrent("pro")
+                  ? "Current plan"
+                  : busy === "pro"
+                  ? "Redirecting…"
+                  : isPending
+                  ? "Start Pro"
+                  : "Upgrade to Pro"
+              }
+              disabled={!me || isCurrent("pro") || !canCheckout("pro")}
               accent="violet"
               note={!PRICE_IDS.pro ? "Set NEXT_PUBLIC_STRIPE_PRICE_PRO" : "Best for real apps at scale."}
               onClick={() => startCheckout("pro")}
             />
 
             <PlanCard
-              current={currentPlan === "enterprise"}
+              current={isCurrent("enterprise")}
               title="Scale"
               subtitle="Authoritative human presence at scale."
-              highlights={[
-  "Everything in Pro",
-  `Includes ${fmtInt(PLAN_QUOTA.enterprise)} verifications/mo`,
-  "Built for irreversible operations"
-]}
+              highlights={["Everything in Pro", `Includes ${fmtInt(PLAN_QUOTA.enterprise)} verifications/mo`, "Built for irreversible operations"]}
               price={`${PLAN_PRICE.enterprise}/mo`}
-             ctaLabel={currentPlan === "enterprise" ? "Current plan" : busy === "enterprise" ? "Redirecting…" : "Upgrade to Scale"}
-              disabled={!me || currentPlan === "enterprise" || !canCheckout("enterprise")}
+              ctaLabel={
+                isCurrent("enterprise")
+                  ? "Current plan"
+                  : busy === "enterprise"
+                  ? "Redirecting…"
+                  : isPending
+                  ? "Start Scale"
+                  : "Upgrade to Scale"
+              }
+              disabled={!me || isCurrent("enterprise") || !canCheckout("enterprise")}
               accent="gold"
               note={!PRICE_IDS.enterprise ? "Set NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE" : "For critical infrastructure."}
               onClick={() => startCheckout("enterprise")}
@@ -371,7 +420,7 @@ function fmtInt(n: number) {
 
               <ul style={ulStyle}>
                 {[
-                "Paid pilot available (1 endpoint, 2 weeks)",
+                  "Paid pilot available (1 endpoint, 2 weeks)",
                   "Custom verification capacity + burst",
                   "SLA / priority support options",
                   "Security review packet on request",
@@ -409,7 +458,7 @@ function fmtInt(n: number) {
           <div style={hrStyle} />
 
           <div style={footerRowStyle}>
-            <Link href="/" style={btnGhostStyle}>
+            <Link href="/console" style={btnGhostStyle}>
               Back
             </Link>
             <Link href="/privacy" style={btnGhostStyle}>
@@ -449,8 +498,13 @@ function fmtInt(n: number) {
                     </div>
 
                     <div style={{ marginTop: 12 }}>
-                      {/* We mount Calendly into this host every time the modal opens */}
                       <div ref={calendlyHostRef} />
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                      <button className="portalMailLink" type="button" onClick={emailSalesNow}>
+                        Or email sales
+                      </button>
                     </div>
                   </div>
 
@@ -740,6 +794,16 @@ const css = `
   white-space: nowrap;
 }
 
+.pendingCallout{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,190,120,.28);
+  background: rgba(255,190,120,.10);
+}
+.pendingTitle{ font-weight: 950; }
+.pendingBody{ margin-top: 6px; font-size: 13px; opacity: .92; line-height: 1.5; }
+
 .planGrid{
   display:grid;
   gap: 12px;
@@ -761,7 +825,6 @@ const css = `
   border-color: rgba(120,255,231,.35);
   background: rgba(120,255,231,.06);
 }
-
 .planCardAssured{
   border-color: rgba(120,255,231,.28);
   background: rgba(120,255,231,.06);

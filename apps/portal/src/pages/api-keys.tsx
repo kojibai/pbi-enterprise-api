@@ -4,18 +4,17 @@ import { apiJson } from "../lib/api";
 
 type PlanKey = "starter" | "pro" | "enterprise";
 
-type Me = { customer: { id: string; email: string; plan: PlanKey; quotaPerMonth: string } };
+type Me = { customer: { id: string; email: string; plan: string; quotaPerMonth: string } };
 
-// Console-style key rows (tolerant: may include extra fields)
+// Console-style key rows (tolerant)
 type ApiKeyRow = {
   id: string;
   label: string;
-  plan?: PlanKey;
+  plan?: string;
   quota_per_month?: string;
   is_active: boolean;
   created_at: string;
 
-  // optional if your backend ever includes them
   prefix?: string;
   last_used_at?: string | null;
   revoked_at?: string | null;
@@ -23,11 +22,18 @@ type ApiKeyRow = {
 
 type KeysResp = { apiKeys?: ApiKeyRow[]; keys?: ApiKeyRow[] };
 
-const PLAN_LABEL: Record<PlanKey, string> = {
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Scale"
-};
+function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
+  const s = String(raw ?? "").toLowerCase().trim();
+
+  if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
+  if (s === "pro") return { planKey: "pro", uiLabel: "Pro", isPending: false };
+  if (s === "enterprise") return { planKey: "enterprise", uiLabel: "Scale", isPending: false };
+
+  if (s === "pending") return { planKey: "starter", uiLabel: "Pending", isPending: true };
+
+  // never crash
+  return { planKey: "starter", uiLabel: s ? s.toUpperCase() : "Starter", isPending: false };
+}
 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
@@ -50,9 +56,10 @@ export default function ApiKeysPage() {
 
   const authed = !!me;
 
-  const currentPlanKey: PlanKey = (me?.customer.plan ?? "starter") as PlanKey;
-  const planLabel = PLAN_LABEL[currentPlanKey].toUpperCase();
-  const quota = me?.customer.quotaPerMonth ?? "—";
+  const { uiLabel: planUiLabel, isPending } = normalizePlan(me?.customer.plan);
+  const planLabel = planUiLabel.toUpperCase();
+  const quota = (me?.customer.quotaPerMonth ?? "—").trim();
+  const quotaDisplay = quota && quota !== "0" ? `${quota}/mo` : "—";
 
   const activeKeys = useMemo(() => keys.filter((k) => k.is_active), [keys]);
   const revokedKeys = useMemo(() => keys.filter((k) => !k.is_active), [keys]);
@@ -70,7 +77,6 @@ export default function ApiKeysPage() {
 
       setRawKey("");
     } catch {
-      // Not signed in → bounce to login to match console behavior
       window.location.href = "/login";
     } finally {
       setLoading(false);
@@ -97,13 +103,11 @@ export default function ApiKeysPage() {
 
     setBusy("create");
     try {
-      // Console expects { label }
       const r = await apiJson<any>("/v1/portal/api-keys", {
         method: "POST",
         body: JSON.stringify({ label: nm })
       });
 
-      // Primary: rawApiKey (console)
       const secret: string | undefined = r?.rawApiKey ?? r?.apiKey ?? r?.key ?? r?.token ?? r?.secret;
       if (secret) {
         setRawKey(secret);
@@ -163,6 +167,9 @@ export default function ApiKeysPage() {
             <Link className="navLink" href="/console">
               Dashboard
             </Link>
+            <Link className="navLink" href="/usage">
+              Usage
+            </Link>
             <Link className="navLink" href="/billing">
               Billing
             </Link>
@@ -192,10 +199,27 @@ export default function ApiKeysPage() {
 
                 <div className="kpiRow">
                   <KPI label="Plan" value={planLabel} />
-                  <KPI label="Quota" value={`${quota}/mo`} />
+                  <KPI label="Quota" value={quotaDisplay} />
                   <KPI label="Active keys" value={activeKeys.length.toString()} />
                   <KPI label="Total keys" value={keys.length.toString()} />
                 </div>
+
+                {isPending ? (
+                  <div className="pendingCallout" role="status">
+                    <div className="pendingTitle">Pending billing activation</div>
+                    <div className="pendingBody">
+                      Your account is in <b>pending</b> state. Activate billing to start metering and unlock plan enforcement.
+                    </div>
+                    <div className="pendingBtns">
+                      <Link className="btnPrimaryLink" href="/billing">
+                        Activate billing →
+                      </Link>
+                      <Link className="btnGhostLink" href="/console">
+                        Back to dashboard →
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
 
                 {err ? <div className="error">{err}</div> : null}
 
@@ -247,7 +271,7 @@ export default function ApiKeysPage() {
                 <div className="sideTop">
                   <div>
                     <div className="kicker">Plan</div>
-                    <div className="sideTitle">{PLAN_LABEL[currentPlanKey]}</div>
+                    <div className="sideTitle">{planUiLabel}</div>
                   </div>
                   <div className="tag">{planLabel}</div>
                 </div>
@@ -255,7 +279,7 @@ export default function ApiKeysPage() {
                 <div className="sideBody">
                   <div className="miniRow">
                     <div className="miniK">Quota</div>
-                    <div className="miniV">{quota}/mo</div>
+                    <div className="miniV">{quotaDisplay}</div>
                   </div>
                   <div className="miniRow">
                     <div className="miniK">Metering</div>
@@ -322,11 +346,14 @@ export default function ApiKeysPage() {
                         </div>
                       ) : null}
                     </div>
+
                     <div className="cell">{fmtDate(k.created_at)}</div>
+
                     <div className="cell">
                       {k.is_active ? <span className="status ok">ACTIVE</span> : <span className="status off">REVOKED</span>}
                       {k.last_used_at ? <div className="mutedSmall" style={{ marginTop: 6 }}>Last used: {fmtDate(k.last_used_at)}</div> : null}
                     </div>
+
                     <div className="cell right">
                       {k.is_active ? (
                         <button className="btnDanger" disabled={!!busy} onClick={() => revokeKey(k.id)} type="button">
@@ -341,7 +368,6 @@ export default function ApiKeysPage() {
               )}
             </div>
 
-            {/* Optional: separate revoked list if you want it visually distinct */}
             {!loading && revokedKeys.length > 0 ? (
               <div style={{ marginTop: 14 }}>
                 <div className="kicker">History</div>
@@ -570,9 +596,7 @@ body{ margin:0; overflow-x:hidden; }
   grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 10px;
 }
-@media (max-width: 980px){
-  .kpiRow{ grid-template-columns: 1fr 1fr; }
-}
+@media (max-width: 980px){ .kpiRow{ grid-template-columns: 1fr 1fr; } }
 .kpi{
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,.12);
@@ -584,6 +608,43 @@ body{ margin:0; overflow-x:hidden; }
 .kpiLabel{ font-size: 11px; color: rgba(255,255,255,.56); }
 .kpiValue{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
 
+/* Pending callout */
+.pendingCallout{
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,190,120,.28);
+  background: rgba(255,190,120,.10);
+  padding: 12px;
+}
+.pendingTitle{ font-weight: 950; }
+.pendingBody{ margin-top: 6px; font-size: 13px; color: rgba(255,255,255,.86); line-height: 1.5; }
+.pendingBtns{ margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; }
+.btnPrimaryLink{
+  border-radius: 16px;
+  padding: 11px 14px;
+  font-weight: 950;
+  border: 1px solid rgba(120,255,231,.55);
+  background: rgba(120,255,231,.95);
+  color: #05070e;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.btnGhostLink{
+  border-radius: 16px;
+  padding: 11px 14px;
+  font-weight: 950;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Errors */
 .error{
   margin-top: 10px;
   padding: 10px;
@@ -593,6 +654,7 @@ body{ margin:0; overflow-x:hidden; }
   font-size: 13px;
 }
 
+/* Create row */
 .createRow{ margin-top: 10px; }
 .formRow{
   display:flex;
@@ -625,7 +687,7 @@ body{ margin:0; overflow-x:hidden; }
 .btnPrimary:hover{ transform: translateY(-1px); filter: brightness(.99); }
 .btnPrimary:disabled{ opacity:.65; cursor:not-allowed; }
 
-.btnGhost, .btnGhostLink{
+.btnGhost{
   border-radius: 16px;
   padding: 11px 14px;
   font-weight: 950;
@@ -634,12 +696,8 @@ body{ margin:0; overflow-x:hidden; }
   color: rgba(255,255,255,.92);
   cursor: pointer;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
-  text-decoration:none;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
 }
-.btnGhost:hover, .btnGhostLink:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
+.btnGhost:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 
 .btnDanger{
   border-radius: 14px;
@@ -767,6 +825,7 @@ body{ margin:0; overflow-x:hidden; }
 .status.ok{ border-color: rgba(120,255,231,.28); background: rgba(120,255,231,.08); }
 .status.off{ border-color: rgba(255,255,255,.16); opacity: .75; }
 
+/* Footer */
 .footer{
   margin-top: 12px;
   display:flex;
@@ -778,7 +837,7 @@ body{ margin:0; overflow-x:hidden; }
   font-size: 12px;
 }
 .footerLinks{ display:flex; gap: 12px; flex-wrap: wrap; }
-.footer a{ color: rgba(120,255,231,.9); }
+.footer a{ color: rgba(120,255,231,.9); text-decoration:none; }
 .footer a:hover{ text-decoration: underline; }
 
 @media (max-width: 980px){

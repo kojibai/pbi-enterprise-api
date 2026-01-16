@@ -13,6 +13,19 @@ const PLAN_PRICE: Record<PlanKey, string> = {
   enterprise: "$1,999"
 };
 
+function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
+  const s = String(raw ?? "").toLowerCase().trim();
+  if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
+  if (s === "pro") return { planKey: "pro", uiLabel: "Pro", isPending: false };
+  if (s === "enterprise") return { planKey: "enterprise", uiLabel: "Scale", isPending: false };
+
+  // common pre-billing state
+  if (s === "pending") return { planKey: "starter", uiLabel: "Pending", isPending: true };
+
+  // never crash for unknown values
+  return { planKey: "starter", uiLabel: s ? s.toUpperCase() : "Starter", isPending: false };
+}
+
 function fmtDate(d: string) {
   try {
     return new Date(d).toLocaleString();
@@ -59,6 +72,7 @@ export default function Home() {
     load().catch(() => {
       window.location.href = "/login";
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function createKey() {
@@ -113,7 +127,8 @@ export default function Home() {
     }
   }
 
-  const planUpper = (me?.customer.plan ?? "starter").toUpperCase();
+  const { planKey: currentPlanKey, uiLabel: planLabel, isPending } = normalizePlan(me?.customer.plan);
+  const planUpper = planLabel.toUpperCase();
   const quota = me?.customer.quotaPerMonth ?? "—";
 
   const usageTotal = useMemo(() => usage.reduce((s, r) => s + toNum(r.total), 0), [usage]);
@@ -124,9 +139,6 @@ export default function Home() {
   }, [usage]);
 
   const activeKeys = useMemo(() => keys.filter((k) => k.is_active), [keys]);
-
-  // normalized key so we can safely index PLAN_PRICE
-  const currentPlanKey = (me?.customer.plan ?? "starter").toLowerCase() as PlanKey;
 
   function copy(text: string) {
     try {
@@ -157,6 +169,9 @@ export default function Home() {
           <nav className="nav">
             <a className="navLink" href="/api-keys">
               API Keys
+            </a>
+            <a className="navLink" href="/usage">
+              Usage
             </a>
             <a className="navLink" href="/billing">
               Billing
@@ -189,6 +204,23 @@ export default function Home() {
                   <KPI label="Usage total" value={usageTotal.toLocaleString()} />
                   <KPI label="Active keys" value={activeKeys.length.toString()} />
                 </div>
+
+                {isPending ? (
+                  <div className="pendingCallout" role="status">
+                    <div className="pendingTitle">Pending billing activation</div>
+                    <div className="pendingBody">
+                      Your account is in <b>pending</b> state. Activate billing to start metering and unlock plan enforcement.
+                    </div>
+                    <div className="pendingBtns">
+                      <a className="btnPrimary" href="/billing">
+                        Activate billing →
+                      </a>
+                      <a className="btnGhost" href="/api-keys">
+                        Manage keys →
+                      </a>
+                    </div>
+                  </div>
+                ) : null}
 
                 {err ? <div className="error">{err}</div> : null}
 
@@ -229,7 +261,7 @@ export default function Home() {
                     <div className="mobileTitle">Manage keys</div>
                     <div className="hint">Create, revoke, and view all keys.</div>
                     <a className="linkBtn" href="/api-keys">
-                    API Keys →
+                      API Keys →
                     </a>
                   </div>
 
@@ -238,7 +270,7 @@ export default function Home() {
                     <div className="mobileTitle">View metering</div>
                     <div className="hint">Monthly challenge + verify totals.</div>
                     <a className="linkBtn" href="/usage">
-                    Usage →
+                      Usage →
                     </a>
                   </div>
 
@@ -246,27 +278,17 @@ export default function Home() {
                     <div className="kicker">Billing</div>
                     <div className="mobileTitle">Upgrade plan</div>
                     <div className="hint">
-                      Current: {currentPlanKey.toUpperCase()} · {PLAN_PRICE[currentPlanKey]}/mo
+                      Current: {planUpper} · {PLAN_PRICE[currentPlanKey]}/mo
                     </div>
                     <a className="linkBtnPrimary" href="/billing">
-                    Billing →
+                      Billing →
                     </a>
 
                     <div className="inlinePlans">
-                      <button
-                        className="miniBtn"
-                        disabled={!!busy || !priceIds.starter}
-                        onClick={() => checkout("starter")}
-                        type="button"
-                      >
+                      <button className="miniBtn" disabled={!!busy || !priceIds.starter} onClick={() => checkout("starter")} type="button">
                         Starter
                       </button>
-                      <button
-                        className="miniBtn"
-                        disabled={!!busy || !priceIds.pro}
-                        onClick={() => checkout("pro")}
-                        type="button"
-                      >
+                      <button className="miniBtn" disabled={!!busy || !priceIds.pro} onClick={() => checkout("pro")} type="button">
                         Pro
                       </button>
                       <button
@@ -289,7 +311,7 @@ export default function Home() {
                     <div className="kicker">Billing</div>
                     <div className="sideTitle">Upgrade plan</div>
                   </div>
-                  <div className="tag">{currentPlanKey.toUpperCase()}</div>
+                  <div className="tag">{planUpper}</div>
                 </div>
 
                 <div className="sideBody">
@@ -313,12 +335,7 @@ export default function Home() {
                     <button className="btnGhost" disabled={!!busy || !priceIds.pro} onClick={() => checkout("pro")} type="button">
                       Pro {PLAN_PRICE.pro}/mo
                     </button>
-                    <button
-                      className="btnPrimary"
-                      disabled={!!busy || !priceIds.enterprise}
-                      onClick={() => checkout("enterprise")}
-                      type="button"
-                    >
+                    <button className="btnPrimary" disabled={!!busy || !priceIds.enterprise} onClick={() => checkout("enterprise")} type="button">
                       Scale {PLAN_PRICE.enterprise}/mo
                     </button>
                   </div>
@@ -420,11 +437,7 @@ export default function Home() {
                   </div>
                 ) : (
                   usage.map((u, idx) => (
-                    <div
-                      className="trow"
-                      style={{ gridTemplateColumns: "1fr 1fr .6fr" }}
-                      key={`${u.month_key}:${u.kind}:${idx}`}
-                    >
+                    <div className="trow" style={{ gridTemplateColumns: "1fr 1fr .6fr" }} key={`${u.month_key}:${u.kind}:${idx}`}>
                       <div className="cell">{u.month_key}</div>
                       <div className="cell">
                         <code className="inlineCode">{u.kind}</code>
@@ -682,6 +695,18 @@ body{ margin:0; overflow-x:hidden; }
 .kpiLabel{ font-size: 11px; color: rgba(255,255,255,.56); }
 .kpiValue{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
 
+/* Pending callout */
+.pendingCallout{
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,190,120,.28);
+  background: rgba(255,190,120,.10);
+  padding: 12px;
+}
+.pendingTitle{ font-weight: 950; }
+.pendingBody{ margin-top: 6px; font-size: 13px; color: rgba(255,255,255,.86); line-height: 1.5; }
+.pendingBtns{ margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; }
+
 /* Errors + CTAs */
 .error{
   margin-top: 10px;
@@ -703,6 +728,10 @@ body{ margin:0; overflow-x:hidden; }
   cursor: pointer;
   transition: transform .12s ease, filter .12s ease;
   max-width:100%;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 .btnPrimary:hover{ transform: translateY(-1px); filter: brightness(.99); }
 .btnPrimary:disabled{ opacity:.65; cursor:not-allowed; }
@@ -717,6 +746,10 @@ body{ margin:0; overflow-x:hidden; }
   cursor: pointer;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
   max-width:100%;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 .btnGhost:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 
@@ -963,7 +996,7 @@ body{ margin:0; overflow-x:hidden; }
 .footer a{ color: rgba(120,255,231,.9); }
 .footer a:hover{ text-decoration: underline; }
 
-/* Mobile table fallback if ever shown */
+/* Mobile table fallback */
 @media (max-width: 820px){
   .trow{ grid-template-columns: 1fr; }
   .right{ text-align:left; }
