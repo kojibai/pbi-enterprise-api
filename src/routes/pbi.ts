@@ -100,7 +100,7 @@ pbiRouter.post(
     res.json({
       id: ch.id,
       challengeB64Url: ch.challengeB64Url,
-      expiresAt: ch.expiresAt,
+      expiresAtIso: ch.expiresAtIso,
       purpose: ch.purpose,
       actionHashHex: ch.actionHashHex,
 
