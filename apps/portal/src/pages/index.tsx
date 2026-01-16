@@ -189,7 +189,16 @@ export default function HomePage() {
       window.removeEventListener("mousedown", onMouseDown);
     };
   }, [salesOpen]);
+// ✅ EDIT THESE to match your server-enforced quotas
+const PLAN_QUOTA = {
+  starter: 10_000,
+  pro: 100_000,
+  scale: 1_000_000
+} as const;
 
+function fmtInt(n: number) {
+  return n.toLocaleString();
+}
   return (
     <div className="pbi-landing">
       <div className="pbi-bg" aria-hidden />
@@ -440,39 +449,49 @@ POST /v1/pbi/verify     { assertion }
               <div className="pbi-cardBody">Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.</div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
-                <PlanCard
-                  name="Starter"
-                  price="$99"
-                  period="/month"
-                  tagline="Ship presence gates fast."
-                  bestFor="Best for: teams shipping their first high-risk presence gates."
-                  bullets={["Presence verification core", "Starter verification quota", "Receipt hash + audit trail", "Client portal + billing"]}
-                />
+        <PlanCard
+  name="Starter"
+  price="$99"
+  period="/month"
+  tagline="Ship presence gates fast."
+  bestFor="Best for: teams shipping their first high-risk presence gates."
+  bullets={[
+    "Presence verification core",
+    `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo`,
+    "Receipt hash + audit trail",
+    "Client portal + billing"
+  ]}
+/>
 
-                <PlanCard
-                  name="Pro"
-                  price="$499"
-                  period="/month"
-                  tagline="Higher throughput + more automation."
-                  bestFor="Best for: products scaling enforcement coverage."
-                  bullets={["Everything in Starter", "Higher verification quota", "Priority processing", "Built for scaling teams"]}
-                />
+<PlanCard
+  name="Pro"
+  price="$499"
+  period="/month"
+  tagline="Higher throughput + more automation."
+  bestFor="Best for: products scaling enforcement coverage."
+  bullets={[
+    "Everything in Starter",
+    `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
+    "Priority processing",
+    "Built for scaling teams"
+  ]}
+/>
 
-                <PlanCard
-                  name="Scale"
-                  price="$1,999"
-                  period="/month"
-                  tagline="Authoritative human presence at scale."
-                  bestFor="Best for: financial infrastructure, governance, mission-critical control."
-                  featured
-                  bullets={[
-                    "Everything in Pro",
-                    "Highest verification quota",
-                    "Enterprise reliability + throughput",
-                    "Designed for irreversible operations",
-                    "Dispute & compliance ready"
-                  ]}
-                />
+<PlanCard
+  name="Scale"
+  price="$1,999"
+  period="/month"
+  tagline="Authoritative human presence at scale."
+  bestFor="Best for: financial infrastructure, governance, mission-critical control."
+  featured
+  bullets={[
+    "Everything in Pro",
+    `Includes ${fmtInt(PLAN_QUOTA.scale)} verifications/mo`,
+    "Enterprise throughput + reliability",
+    "Designed for irreversible operations",
+    "Dispute & compliance ready"
+  ]}
+/>
 
 <PlanCard
   name="Enterprise (PBI Assured)"

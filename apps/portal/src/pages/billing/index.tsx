@@ -223,7 +223,23 @@ export default function BillingIndex() {
       window.removeEventListener("mousedown", onMouseDown);
     };
   }, [assuredOpen]);
+// Display labels (keep PlanKey as-is, but show "Scale" to users)
+const PLAN_LABEL: Record<PlanKey, string> = {
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Scale"
+};
 
+// ✅ EDIT THESE 3 NUMBERS to match your server-enforced quotas
+const PLAN_QUOTA: Record<PlanKey, number> = {
+  starter: 10_000,
+  pro: 100_000,
+  enterprise: 1_000_000
+};
+
+function fmtInt(n: number) {
+  return n.toLocaleString();
+}
   return (
     <div style={pageStyle}>
       <style>{css}</style>
@@ -260,8 +276,10 @@ export default function BillingIndex() {
 
             <div className="currentPill" aria-label="Current plan">
               <span style={{ opacity: 0.75 }}>Current</span>
-              <span style={{ fontWeight: 950, letterSpacing: 0.3 }}>{currentPlan.toUpperCase()}</span>
-              {me?.quotaPerMonth ? <span style={{ opacity: 0.75 }}>{me.quotaPerMonth}/mo</span> : null}
+              <span style={{ fontWeight: 950, letterSpacing: 0.3 }}>{PLAN_LABEL[currentPlan].toUpperCase()}</span>
+<span style={{ opacity: 0.75 }}>
+  {me?.quotaPerMonth ? me.quotaPerMonth : fmtInt(PLAN_QUOTA[currentPlan])}/mo
+</span>
             </div>
           </div>
 
@@ -285,10 +303,10 @@ export default function BillingIndex() {
               title="Starter"
               subtitle="Ship presence verification fast."
               highlights={[
-                "Presence verification core (UP+UV)",
-                "Monthly verification quota (enforced automatically)",
-                "Audit-ready receipts (receiptId + receiptHash)"
-              ]}
+  "Presence verification core (UP+UV)",
+  `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo (enforced automatically)`,
+  "Audit-ready receipts (receiptId + receiptHash)"
+]}
               price={`${PLAN_PRICE.starter}/mo`}
               ctaLabel={currentPlan === "starter" ? "Current plan" : "Switch to Starter"}
               disabled={!me || currentPlan === "starter" || !canCheckout("starter")}
@@ -301,7 +319,11 @@ export default function BillingIndex() {
               current={currentPlan === "pro"}
               title="Pro"
               subtitle="Higher throughput + wider coverage."
-              highlights={["Everything in Starter", "Higher monthly verification quota", "Priority processing"]}
+              highlights={[
+  "Everything in Starter",
+  `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
+  "Priority processing"
+]}
               price={`${PLAN_PRICE.pro}/mo`}
               ctaLabel={currentPlan === "pro" ? "Current plan" : busy === "pro" ? "Redirecting…" : "Upgrade to Pro"}
               disabled={!me || currentPlan === "pro" || !canCheckout("pro")}
@@ -314,9 +336,13 @@ export default function BillingIndex() {
               current={currentPlan === "enterprise"}
               title="Scale"
               subtitle="Authoritative human presence at scale."
-              highlights={["Everything in Pro", "Highest monthly verification quota", "Built for irreversible operations"]}
+              highlights={[
+  "Everything in Pro",
+  `Includes ${fmtInt(PLAN_QUOTA.enterprise)} verifications/mo`,
+  "Built for irreversible operations"
+]}
               price={`${PLAN_PRICE.enterprise}/mo`}
-              ctaLabel={currentPlan === "enterprise" ? "Current plan" : busy === "enterprise" ? "Redirecting…" : "Upgrade to Enterprise"}
+             ctaLabel={currentPlan === "enterprise" ? "Current plan" : busy === "enterprise" ? "Redirecting…" : "Upgrade to Scale"}
               disabled={!me || currentPlan === "enterprise" || !canCheckout("enterprise")}
               accent="gold"
               note={!PRICE_IDS.enterprise ? "Set NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE" : "For critical infrastructure."}
