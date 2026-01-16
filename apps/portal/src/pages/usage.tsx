@@ -25,21 +25,53 @@ function toNum(s: string) {
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
+
 function fmtInt(n: number) {
   return n.toLocaleString();
 }
-function fmtPct(n: number) {
-  return `${Math.round(n * 100)}%`;
+
+function fmtPctSmart(n: number) {
+  const pct = n * 100;
+  if (!Number.isFinite(pct) || pct <= 0) return "0%";
+  if (pct < 1) return `${pct.toFixed(2)}%`;
+  if (pct < 10) return `${pct.toFixed(1)}%`;
+  return `${Math.round(pct)}%`;
 }
+
 function clamp01(x: number) {
   return Math.max(0, Math.min(1, x));
 }
+
 function fmtDateTime(d: Date) {
   try {
     return d.toLocaleString();
   } catch {
     return String(d);
   }
+}
+
+function monthKeyToDate(monthKey: string): Date | null {
+  // monthKey: YYYY-MM
+  const m = (monthKey ?? "").trim();
+  if (!/^\d{4}-\d{2}$/.test(m)) return null;
+  const d = new Date(`${m}-01T00:00:00.000Z`);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+function fmtMonthKey(monthKey: string) {
+  const d = monthKeyToDate(monthKey);
+  if (!d) return monthKey;
+  try {
+    return new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" }).format(d);
+  } catch {
+    return monthKey;
+  }
+}
+
+function fmtRangeLabel(startMonthKey: string | null, endMonthKey: string | null) {
+  if (!startMonthKey || !endMonthKey) return "—";
+  if (startMonthKey === endMonthKey) return fmtMonthKey(startMonthKey);
+  return `${fmtMonthKey(startMonthKey)} → ${fmtMonthKey(endMonthKey)}`;
 }
 
 export default function UsagePage() {
@@ -71,7 +103,7 @@ export default function UsagePage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -172,6 +204,9 @@ export default function UsagePage() {
 
   if (!me) return null;
 
+  const seriesStart = normalized.series.length ? normalized.series[0].month : null;
+  const seriesEnd = normalized.series.length ? normalized.series[normalized.series.length - 1].month : null;
+
   return (
     <div className="console">
       <style>{css}</style>
@@ -218,7 +253,10 @@ export default function UsagePage() {
                   Live metering · audit-ready totals
                 </div>
 
-                <h1 className="h1 email">{me.customer.email}</h1>
+                <h1 className="h1 email">
+                  <EmailText email={me.customer.email} />
+                </h1>
+
                 <p className="lead">
                   Usage is metered automatically (challenge + verify). Use this view for capacity planning, auditing, and rollout coverage.
                 </p>
@@ -273,9 +311,12 @@ export default function UsagePage() {
                   />
 
                   <div className="ctlBtns">
-                    <button className="btnGhost" onClick={() => setAutoRefresh((x) => !x)} type="button" aria-pressed={autoRefresh}>
-                      {autoRefresh ? "Live: ON" : "Live: OFF"}
-                    </button>
+                    <Toggle
+                      label="Live"
+                      checked={autoRefresh}
+                      hint="30s"
+                      onChange={() => setAutoRefresh((x) => !x)}
+                    />
                     <button className="btnGhost" onClick={() => load()} disabled={busy} type="button">
                       {busy ? "Refreshing…" : "Refresh"}
                     </button>
@@ -300,20 +341,24 @@ export default function UsagePage() {
                     <div className="kicker">Capacity</div>
                     <div className="sideTitle">Monthly quota usage</div>
                   </div>
-                  <div className="tag">{quotaPerMonthNum ? fmtPct(quotaFill) : "—"}</div>
+                  <div className="tag">{quotaPerMonthNum ? fmtPctSmart(quotaFill) : "—"}</div>
                 </div>
 
                 <div className="sideBody">
                   <QuotaGauge
                     fill={quotaFill}
+                    pctLabel={quotaPerMonthNum ? fmtPctSmart(quotaFill) : "—"}
                     label={`${fmtInt(currentMonthTotal)} / ${quotaPerMonthNum ? fmtInt(quotaPerMonthNum) : "—"}`}
+                    subLabel={
+                      quotaPerMonthNum
+                        ? `~${fmtPctSmart(quotaFill)} of quota · ${fmtRangeLabel(seriesStart, seriesEnd)}`
+                        : `No quota detected · ${fmtRangeLabel(seriesStart, seriesEnd)}`
+                    }
                   />
 
                   <div className="divider" />
 
-                  <div className="hint">
-                    Tip: gate irreversible endpoints first. Expand coverage after you validate UX and failure modes.
-                  </div>
+                  <div className="hint">Tip: gate irreversible endpoints first. Expand coverage after you validate UX and failure modes.</div>
                 </div>
               </aside>
             </div>
@@ -327,9 +372,7 @@ export default function UsagePage() {
                   <div className="kicker">Trend</div>
                   <div className="panelTitle">{selectedKind === "__TOTAL__" ? "Total usage" : selectedKind}</div>
                 </div>
-                <div className="panelMeta">
-                  {normalized.series.length ? `${normalized.series[0].month} → ${normalized.series[normalized.series.length - 1].month}` : "—"}
-                </div>
+                <div className="panelMeta">{fmtRangeLabel(seriesStart, seriesEnd)}</div>
               </div>
 
               <LineChart
@@ -356,7 +399,7 @@ export default function UsagePage() {
                 series={normalized.series}
                 kinds={normalized.kinds}
                 height={220}
-                footer="Hover bars to see per-month totals. This chart stays correct even if you add new meter kinds later."
+                footer="Tap a bar to pin the per-month totals. This chart stays correct even if you add new meter kinds later."
               />
             </div>
           </section>
@@ -415,6 +458,25 @@ export default function UsagePage() {
   );
 }
 
+function EmailText({ email }: { email: string }) {
+  // Allows natural wrapping ONLY at separators, preventing mid-token breaks like ".co" + "m"
+  const parts = email.split(/([@.])/);
+  return (
+    <span className="emailInline" aria-label={email}>
+      {parts.map((p, i) =>
+        p === "@" || p === "." ? (
+          <React.Fragment key={String(i)}>
+            {p}
+            <wbr />
+          </React.Fragment>
+        ) : (
+          <React.Fragment key={String(i)}>{p}</React.Fragment>
+        )
+      )}
+    </span>
+  );
+}
+
 function KPI({ label, value }: { label: string; value: string }) {
   return (
     <div className="kpi">
@@ -455,6 +517,30 @@ function Segment({
         ))}
       </div>
     </div>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  hint,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  hint?: string;
+  onChange: () => void;
+}) {
+  return (
+    <button className="toggle" type="button" onClick={onChange} role="switch" aria-checked={checked}>
+      <span className="toggleLeft">
+        <span className="toggleLabel">{label}</span>
+        {hint ? <span className="toggleHint">{hint}</span> : null}
+      </span>
+      <span className={`toggleTrack ${checked ? "toggleTrackOn" : ""}`} aria-hidden>
+        <span className={`toggleKnob ${checked ? "toggleKnobOn" : ""}`} />
+      </span>
+    </button>
   );
 }
 
@@ -503,7 +589,7 @@ function LineChart({
         <svg viewBox={`0 0 ${width} ${height}`} className="chartSvg" aria-label="Usage trend chart" role="img">
           {Array.from({ length: 5 }).map((_, i) => {
             const y = padY + (i / 4) * innerH;
-            return <line key={i} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
+            return <line key={String(i)} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
           })}
           <path d={areaPath} className="chartArea" />
           <path d={path} className="chartLine" />
@@ -547,13 +633,31 @@ function BarBreakdown({
 
   const kindClass = (_k: string, i: number) => `barSeg barSeg${(i % 4) + 1}`;
 
+  const [activeIdx, setActiveIdx] = useState<number>(() => (series.length ? Math.max(0, series.length - 1) : 0));
+
+  useEffect(() => {
+    if (!series.length) return;
+    setActiveIdx((prev) => {
+      const next = Math.max(0, Math.min(prev, series.length - 1));
+      return next;
+    });
+  }, [series.length]);
+
+  const active = series.length ? series[Math.max(0, Math.min(activeIdx, series.length - 1))] : null;
+  const activeKinds = kinds.length ? kinds : Object.keys(active?.byKind ?? {});
+  const activeBreakdown = active
+    ? activeKinds
+        .map((k) => ({ kind: k, total: active.byKind[k] ?? 0 }))
+        .filter((x) => x.total > 0)
+    : [];
+
   return (
     <div>
       <div className="chartWrap">
         <svg viewBox={`0 0 ${width} ${height}`} className="chartSvg" aria-label="Usage breakdown chart" role="img">
           {Array.from({ length: 5 }).map((_, i) => {
             const y = padY + (i / 4) * innerH;
-            return <line key={i} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
+            return <line key={String(i)} x1={padX} y1={y} x2={padX + innerW} y2={y} className="chartGrid" />;
           })}
 
           {series.map((s, idx) => {
@@ -569,18 +673,43 @@ function BarBreakdown({
               const y = padY + innerH - ((acc + v) / max) * innerH;
               acc += v;
 
-              return <rect key={`${s.month}:${k}`} x={x0} y={y} width={w} height={h} rx={10} className={kindClass(k, i)} />;
+              return (
+                <rect
+                  key={`${s.month}:${k}`}
+                  x={x0}
+                  y={y}
+                  width={w}
+                  height={h}
+                  rx={10}
+                  className={kindClass(k, i)}
+                />
+              );
             });
 
             const tooltip =
-              `${s.month}\n` +
+              `${fmtMonthKey(s.month)}\n` +
               Object.entries(s.byKind)
+                .sort((a, b) => b[1] - a[1])
                 .map(([k, v]) => `${k}: ${fmtInt(v)}`)
                 .join("\n") +
-              `\nTotal: ${fmtInt(s.total)}`;
+              `\nTotal: ${fmtInt(s.total)}\n\n(Tap to pin)`;
+
+            const isActive = active?.month === s.month;
 
             return (
-              <g key={s.month}>
+              <g
+                key={s.month}
+                onClick={() => setActiveIdx(idx)}
+                className={isActive ? "barGroup barGroupActive" : "barGroup"}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActiveIdx(idx);
+                  }
+                }}
+              >
                 <title>{tooltip}</title>
                 {segs}
               </g>
@@ -589,13 +718,38 @@ function BarBreakdown({
         </svg>
       </div>
 
-      <div className="legend">
-        {(kinds.length ? kinds : Object.keys(series[0]?.byKind ?? {})).slice(0, 8).map((k, i) => (
-          <div className="legendItem" key={k}>
-            <span className={`legendSwatch barSeg barSeg${(i % 4) + 1}`} />
-            <span className="legendText">{k}</span>
+<div className="legend">
+  {(kinds.length ? kinds : Object.keys(series[0]?.byKind ?? {})).slice(0, 8).map((k, i) => (
+    <div className="legendItem" key={k}>
+      <span className={`legendSwatch barSeg barSeg${(i % 4) + 1}`} />
+      <span className="legendText">{k}</span>
+    </div>
+  ))}
+</div>
+      <div className="pin">
+        <div className="pinHead">
+          <div className="pinTitle">Pinned month</div>
+          <div className="pinMeta">{active ? fmtMonthKey(active.month) : "—"}</div>
+        </div>
+
+        {active ? (
+          <div className="pinBody">
+            <div className="pinTotals">
+              <div className="pinTotal">
+                <div className="pinK">Total</div>
+                <div className="pinV">{fmtInt(active.total)}</div>
+              </div>
+              {activeBreakdown.slice(0, 6).map((x, i) => (
+                <div className="pinTotal" key={`${x.kind}:${String(i)}`}>
+                  <div className="pinK">{x.kind}</div>
+                  <div className="pinV">{fmtInt(x.total)}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        ) : (
+          <div className="pinEmpty">No data yet.</div>
+        )}
       </div>
 
       <div className="chartFoot">{footer}</div>
@@ -603,15 +757,31 @@ function BarBreakdown({
   );
 }
 
-function QuotaGauge({ fill, label }: { fill: number; label: string }) {
+function QuotaGauge({
+  fill,
+  pctLabel,
+  label,
+  subLabel
+}: {
+  fill: number;
+  pctLabel: string;
+  label: string;
+  subLabel: string;
+}) {
   const pct = clamp01(fill);
   const deg = Math.round(pct * 270);
+type CSSVars = React.CSSProperties & { ["--deg"]?: string };
+const style: CSSVars = { ["--deg"]: `${deg}deg` };
+
+<div className="gaugeRing" style={style} aria-hidden />
+
   return (
     <div className="gauge">
-      <div className="gaugeRing" style={{ ["--deg" as any]: `${deg}deg` }} aria-hidden />
+      <div className="gaugeRing" style={style} aria-hidden />
       <div className="gaugeCore">
-        <div className="gaugePct">{fmtPct(pct)}</div>
+        <div className="gaugePct">{pctLabel}</div>
         <div className="gaugeLabel">{label}</div>
+        <div className="gaugeSub">{subLabel}</div>
       </div>
     </div>
   );
@@ -800,7 +970,11 @@ a{ color: inherit; }
   line-height: 1.05;
   font-size: 30px;
 }
-.h1.email{ overflow-wrap:anywhere; word-break: break-word; }
+
+/* Email: only break at @ and . via <wbr/> */
+.h1.email{ word-break: normal; overflow-wrap: normal; }
+.emailInline{ display:inline; }
+
 .lead{
   margin-top: 8px;
   color: rgba(255,255,255,.76);
@@ -943,6 +1117,51 @@ a{ color: inherit; }
 }
 .btnGhost:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 
+/* Toggle switch */
+.toggle{
+  border-radius: 16px;
+  padding: 11px 12px;
+  font-weight: 950;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  min-width: 150px;
+}
+.toggle:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
+.toggleLeft{ display:flex; align-items:baseline; gap: 8px; }
+.toggleLabel{ font-size: 13px; }
+.toggleHint{ font-size: 11px; opacity:.72; }
+.toggleTrack{
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.25);
+  position: relative;
+  flex: 0 0 auto;
+}
+.toggleTrackOn{
+  border-color: rgba(120,255,231,.35);
+  background: rgba(120,255,231,.20);
+}
+.toggleKnob{
+  position:absolute;
+  left: 3px; top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  border-radius:999px;
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  transition: left .14s ease, background .14s ease;
+}
+.toggleKnobOn{ left: 23px; background: rgba(120,255,231,.98); }
+
 /* Side rail */
 .side{
   border-radius: 22px;
@@ -1002,6 +1221,7 @@ a{ color: inherit; }
 }
 .gaugePct{ font-weight: 950; font-size: 30px; letter-spacing: -0.02em; }
 .gaugeLabel{ margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.72); line-height:1.4; }
+.gaugeSub{ margin-top: 6px; font-size: 11px; color: rgba(255,255,255,.58); line-height:1.45; }
 
 /* Panels */
 .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1044,6 +1264,9 @@ a{ color: inherit; }
 .barSeg3{ fill: rgba(255,190,120,.52); }
 .barSeg4{ fill: rgba(255,138,160,.46); }
 
+.barGroup{ cursor: pointer; }
+.barGroupActive{ filter: drop-shadow(0 10px 18px rgba(0,0,0,.30)); }
+
 /* Legend */
 .legend{ margin-top: 10px; display:flex; flex-wrap: wrap; gap: 10px; }
 .legendItem{ display:flex; align-items:center; gap: 8px; }
@@ -1052,6 +1275,36 @@ a{ color: inherit; }
   border: 1px solid rgba(255,255,255,.18);
 }
 .legendText{ font-size: 12px; opacity: .80; }
+
+/* Pinned month panel */
+.pin{
+  margin-top: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  padding: 12px;
+}
+.pinHead{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+.pinTitle{ font-size: 12px; opacity:.72; }
+.pinMeta{ font-size: 12px; font-weight: 950; }
+.pinBody{ margin-top: 10px; }
+.pinTotals{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 520px){
+  .pinTotals{ grid-template-columns: 1fr; }
+}
+.pinTotal{
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  padding: 10px;
+}
+.pinK{ font-size: 11px; opacity:.65; }
+.pinV{ margin-top: 6px; font-weight: 950; }
+.pinEmpty{ margin-top: 10px; font-size: 12px; opacity:.72; }
 
 /* Table */
 .table{
