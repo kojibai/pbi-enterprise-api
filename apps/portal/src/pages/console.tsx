@@ -249,7 +249,7 @@ export default function Home() {
                       Current: {currentPlanKey.toUpperCase()} · {PLAN_PRICE[currentPlanKey]}/mo
                     </div>
                     <a className="linkBtnPrimary" href="/billing">
-                      Open Billing →
+                    Billing →
                     </a>
 
                     <div className="inlinePlans">
