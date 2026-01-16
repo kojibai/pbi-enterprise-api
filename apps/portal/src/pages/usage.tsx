@@ -773,7 +773,6 @@ function QuotaGauge({
 type CSSVars = React.CSSProperties & { ["--deg"]?: string };
 const style: CSSVars = { ["--deg"]: `${deg}deg` };
 
-<div className="gaugeRing" style={style} aria-hidden />
 
   return (
     <div className="gauge">
