@@ -552,7 +552,41 @@ body{ margin:0; }
   color: rgba(255,220,230,.98);
 }
 
+/* ===== NAV: make it feel native (segmented tabs) ===== */
+.pbi-nav a{
+  text-decoration: none;
+  font-weight: 900;
+  letter-spacing: .2px;
+}
 
+.pbi-nav a:active{
+  transform: translateY(0px) scale(.99);
+}
+/* Active tab state (add class="is-active" to the current nav link) */
+.pbi-nav a.is-active{
+  border-color: rgba(120,255,231,.34);
+  background: rgba(120,255,231,.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+  color: rgba(255,255,255,.92);
+}
+
+.pbi-nav a.is-active::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 16px;
+  pointer-events:none;
+  box-shadow: 0 0 0 6px rgba(120,255,231,.07);
+  opacity: .85;
+}
+
+.kpi{
+  min-height: 84px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.pbi-nav a{ position: relative; }
 /* ======================
    Mint/Teal buttons must always use BLACK text
    (anchors + buttons, all states)
