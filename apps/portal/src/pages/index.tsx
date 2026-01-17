@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { apiJson } from "../lib/api";
+import Head from "next/head";
 
 // Prefer linking directly to docs (Redoc / Swagger) vs root.
 // If your docs live elsewhere, update this constant.
@@ -216,6 +217,53 @@ export default function HomePage() {
   return (
     <div className="pbi-landing">
       <div className="pbi-bg" aria-hidden />
+<Head>
+  {/* Primary */}
+  <title>PBI · Presence-Bound Identity · Kojib</title>
+  <meta
+    name="description"
+    content="Presence verification for irreversible actions. Bind WebAuthn (UP+UV) to an action hash and receive a signed, non-replayable receipt — plus optional portable proof bundles for offline audit and chain-of-custody."
+  />
+
+  {/* Canonical */}
+  <link rel="canonical" href="https://pbi.kojib.com/" />
+
+  {/* Robots */}
+  <meta name="robots" content="index,follow" />
+
+  {/* Favicons */}
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/kojib.png" />
+  <link rel="apple-touch-icon" href="/kojib.png" />
+  <meta name="theme-color" content="#05070e" />
+
+  {/* Open Graph */}
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Kojib" />
+  <meta property="og:title" content="PBI · Presence-Bound Identity" />
+  <meta
+    property="og:description"
+    content="Presence verification for irreversible actions. Action-bound WebAuthn proofs with signed receipts and optional portable proof bundles for offline audit."
+  />
+  <meta property="og:url" content="https://pbi.kojib.com/" />
+  <meta property="og:image" content="https://pbi.kojib.com/pbi_2.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="PBI Presence-Bound Identity — action-bound proof bundles" />
+
+  {/* Twitter */}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PBI · Presence-Bound Identity" />
+  <meta
+    name="twitter:description"
+    content="Presence verification for irreversible actions. Action-bound WebAuthn proofs with signed receipts and portable proof bundles."
+  />
+  <meta name="twitter:image" content="https://pbi.kojib.com/pbi_2.png" />
+
+  {/* Optional: if you have a Twitter handle */}
+  {/* <meta name="twitter:site" content="@kojib" /> */}
+</Head>
+
 
       <div className="pbi-shell">
         {/* TOP BAR */}

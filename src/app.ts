@@ -19,6 +19,15 @@ import { pbiRouter } from "./routes/pbi.js";
 import { billingRouter } from "./routes/billing.js";
 import { adminRouter } from "./routes/admin.js";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// dist/src/server.js -> go up two levels to project root
+const publicDir = path.resolve(__dirname, "../../public");
+
+
 
 export function makeApp() {
   const app = express();
@@ -31,6 +40,7 @@ export function makeApp() {
   app.use(cookieParser());
 
 app.use(express.static(path.join(process.cwd(), "public")));
+app.use(express.static(publicDir));
 
   // Helmet + CSP (supports Redoc on mobile via blob workers)
   app.use(
