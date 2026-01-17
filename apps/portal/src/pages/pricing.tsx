@@ -246,6 +246,7 @@ count(decision == PBI_VERIFIED)`}</pre>
                     "Priority processing",
                     "Overage billed per verification (shown in portal)",
                   ]}
+                  featured
                   ctaLabel={auth === "logged_in" ? "Open console" : "Get access"}
                   ctaHref={auth === "logged_in" ? "/console" : "/#access"}
                 />
