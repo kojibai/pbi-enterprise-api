@@ -120,7 +120,8 @@ export default function StatusPage() {
 
       const detail = p.ok
         ? `Operational${typeof p.ms === "number" ? ` · ${p.ms}ms` : ""}`
-        : `Unavailable${typeof p.code === "number" ? ` · HTTP ${p.code}` : ""}`;
+       : `Unavailable${typeof p.code === "number" ? ` · HTTP ${p.code}` : ""}${(p as { error?: string }).error ? ` · ${(p as { error?: string }).error}` : ""}`;
+
 
       results.push({
         key: t.key,
