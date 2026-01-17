@@ -217,7 +217,7 @@ export default function HomePage() {
     return n.toLocaleString();
   }
 
-  const ogImage = `${SITE_URL}/pbi_2.png`;
+  const ogImage = `${SITE_URL}/pbi_1.png`;
 
   return (
     <>
