@@ -1,11 +1,11 @@
 # PBI Enterprise API (v1)
 
+[![Version](https://img.shields.io/badge/version-v1-0ea5e9.svg)](https://github.com/kojibai/pbi-enterprise-api)
+[![Status](https://img.shields.io/badge/status-operational-22c55e.svg)](https://pbi.kojib.com/status)
 [![CI](https://github.com/kojibai/pbi-enterprise-api/actions/workflows/ci.yml/badge.svg)](https://github.com/kojibai/pbi-enterprise-api/actions/workflows/ci.yml)
 [![gitleaks](https://github.com/kojibai/pbi-enterprise-api/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/kojibai/pbi-enterprise-api/actions/workflows/gitleaks.yml)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-2ea44f.svg)](./LICENSE-AGPL-3.0.txt)
 [![Commercial License](https://img.shields.io/badge/License-Commercial-blueviolet.svg)](./COMMERCIAL_LICENSE.md)
-
-> Note: If your workflow file names differ, update `ci.yml` / `gitleaks.yml` in the badge URLs.
 
 Enterprise-grade API for **Presence-Bound Identity (PBI)** — a strict trust primitive for **irreversible actions**.
 
@@ -69,7 +69,7 @@ Customers are API-key holders. There are **no end-user accounts** in the core mo
   Create a single-use challenge bound to an `actionHash` (or artifact hash) with expiry.
 
 - `POST /v1/pbi/verify`  
-  Verify a WebAuthn UP+UV ceremony for the bound challenge and return a decision.
+  Verify a WebAuthn UP+UV ceremony for the bound challenge and return a decision.  
   **Applications MUST only proceed when decision == `PBI_VERIFIED`.**
 
 ---
