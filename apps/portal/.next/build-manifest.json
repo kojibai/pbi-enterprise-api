@@ -27,10 +27,20 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
+    "/security": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/security.js"
+    ],
     "/status": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/status.js"
+    ],
+    "/why": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/why.js"
     ]
   },
   "ampFirstPages": []
