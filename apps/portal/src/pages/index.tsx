@@ -218,6 +218,34 @@ export default function HomePage() {
   }
 
   const ogImage = `${SITE_URL}/pbi_1.png`;
+const [calendlyHeight, setCalendlyHeight] = useState<number>(720);
+
+useEffect(() => {
+  if (!salesOpen) return;
+
+  const vv = window.visualViewport;
+
+  const compute = () => {
+    // visualViewport is best on iOS because it tracks the Safari UI bars
+    const vh = Math.floor((vv?.height ?? window.innerHeight));
+
+    // Reserve space for: modal header + copy + padding + email button
+    const reserved = 320;
+    const h = Math.max(520, vh - reserved);
+
+    setCalendlyHeight(h);
+  };
+
+  compute();
+
+  vv?.addEventListener("resize", compute);
+  window.addEventListener("resize", compute);
+
+  return () => {
+    vv?.removeEventListener("resize", compute);
+    window.removeEventListener("resize", compute);
+  };
+}, [salesOpen, securityOpen]);
 
   return (
     <>
@@ -777,9 +805,9 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                       Use the inline scheduler below. Your intake form captures the details we need.
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <div ref={calendlyHostRef} />
-                    </div>
+<div className="pbi-calendlyWrap" style={{ marginTop: 12, height: calendlyHeight }}>
+  <div ref={calendlyHostRef} className="pbi-calendlyHost" />
+</div>
 
                     <div style={{ marginTop: 10 }}>
                       <button className="pbi-btnGhost" type="button" onClick={emailSalesNow} style={{ width: "100%", justifyContent: "center" }}>
