@@ -2,8 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/pricing": "pages/pricing.js",
+  "/": "pages/index.js",
   "/enterprise": "pages/enterprise.js",
-  "/developers": "pages/developers.js",
-  "/": "pages/index.js"
+  "/developers": "pages/developers.js"
 }
