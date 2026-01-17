@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbi.kojib.com/schemas/pbi-attest-1.0.schema.json",
+  "title": "PBI Verifier Attestation (pbi-attest-1.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ver",
+    "decision",
+    "receiptHash",
+    "actionHash",
+    "challengeId",
+    "aud",
+    "purpose",
+    "policyVer",
+    "policyHash",
+    "verifiedAt",
+    "verifier",
+    "verifierSig"
+  ],
+  "properties": {
+    "ver": { "const": "pbi-attest-1.0" },
+    "decision": { "type": "string", "enum": ["accept", "reject"] },
+    "receiptHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "actionHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "challengeId": { "type": "string", "minLength": 1 },
+    "aud": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "policyVer": { "type": "string", "minLength": 1 },
+    "policyHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "verifiedAt": { "type": "string", "format": "date-time" },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kid", "alg", "pubKeyJwk"],
+      "properties": {
+        "kid": { "type": "string", "minLength": 1 },
+        "alg": { "const": "ed25519" },
+        "pubKeyJwk": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "verifierSig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "kid", "sig"],
+      "properties": {
+        "alg": { "const": "ed25519" },
+        "kid": { "type": "string", "minLength": 1 },
+        "sig": { "type": "string", "minLength": 16 }
+      }
+    }
+  }
+}

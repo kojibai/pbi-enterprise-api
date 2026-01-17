@@ -5,7 +5,7 @@ import { apiJson } from "../lib/api";
 
 // Prefer linking directly to docs (Interactive / Reference) vs root.
 // If your docs live elsewhere, update this constant.
-const API_DOCS = "https://api.kojib.com/docs";
+const API_DOCS = "https://api.kojib.com/redoc";
 const DEFAULT_CALENDLY = "https://calendly.com/kojibchat/one-on-one";
 
 // Public tools

@@ -105,6 +105,17 @@ trust.json
 trust.*.json
 !trust.example.json
 
+# NEW: attestor trust policy (real allowlists/revocations are sensitive)
+trust-attestors.json
+trust-attestors.*.json
+!trust-attestors.example.json
+
+# -----------------------
+# Conformance scratch outputs (keep fixtures only)
+# -----------------------
+pbi-conf-*.json
+!test-vectors/pbi-conf-*.json
+
 # -----------------------
 # PBI Packs / Proofs / Receipts (NEVER COMMIT REAL ONES)
 # -----------------------
@@ -114,6 +125,12 @@ pbi-stdlib/pbi-pack-2/
 pbi-stdlib/pbi-pack-demo/
 pbi-stdlib/pbi-pack-demo-*/
 pbi-stdlib/pbi-pack-*/
+
+# attest packs (local)
+pbi-attest-pack/
+pbi-attest-pack-*/
+pbi-stdlib/pbi-attest-pack/
+pbi-stdlib/pbi-attest-pack-*/
 
 # generic pack/proof folders anywhere
 pbi-pack/
@@ -173,3 +190,11 @@ docker-data/
 # Keep your deterministic, non-sensitive test vectors commit-friendly.
 !test-vectors/
 !test-vectors/**
+!test-vectors/pbi-conf-*.json
+
+trust-roots.json
+trust-roots.*.json
+!trust-roots.example.json
+
+trust-attestors.signed.json
+trust-attestors.*.signed.json

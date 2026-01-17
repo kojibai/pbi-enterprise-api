@@ -15,7 +15,11 @@
     "pbi-verify": "./dist/bin/pbi-verify.js",
     "pbi-pack-demo": "./dist/bin/pbi-pack-demo.js",
     "pbi-pack-seal": "./dist/bin/pbi-pack-seal.js",
-    "pbi-pack-verify": "./dist/bin/pbi-pack-verify.js"
+    "pbi-pack-verify": "./dist/bin/pbi-pack-verify.js",
+    "pbi-attest-pack-verify": "./dist/bin/pbi-attest-pack-verify.js",
+    "pbi-attestor-keyid": "./dist/bin/pbi-attestor-keyid.js",
+    "pbi-attestor-trust-sign": "./dist/bin/pbi-attestor-trust-sign.js",
+    "pbi-attestor-trust-verify": "./dist/bin/pbi-attestor-trust-verify.js"
   },
   "files": [
     "dist"

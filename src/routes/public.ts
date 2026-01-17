@@ -159,7 +159,7 @@ publicRouter.get("/", (_req, res) => {
         <div class="card">
           <div class="k">Docs</div>
           <div class="links">
-            <a class="btn" href="/docs">Interactive</a>
+            <a class="btn" href="/redoc">Reference</a>
             <a class="btn" href="/health">Health</a>
           </div>
           <div class="hr"></div>

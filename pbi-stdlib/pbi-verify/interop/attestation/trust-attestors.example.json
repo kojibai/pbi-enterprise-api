@@ -1,0 +1,20 @@
+{
+  "ver": "pbi-attestor-trust-1.0",
+  "createdAt": "2026-01-17T00:00:00Z",
+  "trustedAttestors": [
+    {
+      "name": "Kojib Attestor (Example)",
+      "alg": "ed25519",
+      "kid": "example-kid-0001",
+      "keyId": "PUT_SHA256_OF_JCS(pubKeyJwk)_HERE",
+      "pubKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "PUT_X_HERE"
+      },
+      "notBefore": "2026-01-01T00:00:00Z",
+      "notAfter": null
+    }
+  ],
+  "revokedKeyIds": []
+}
