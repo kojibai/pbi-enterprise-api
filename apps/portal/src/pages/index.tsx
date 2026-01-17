@@ -840,27 +840,48 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                 </div>
               </div>
 
-              <footer className="pbi-footer">
-                <div>© {new Date().getFullYear()} Kojib · PBI</div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {/* Premium footer links */}
-                  <a href="/developers">Developers</a>
-                  <a href="/customers">Customers</a>
-                  <a href="/enterprise">Enterprise</a>
-                  <a href="/trust">Trust</a>
-                  <a href="/status">Status</a>
-                  <a href="/changelog">Changelog</a>
-                  <a href="/security">Security</a>
-                  <a href="/terms">Terms</a>
-                  <a href="/privacy">Privacy</a>
-                  <a href={API_DOCS} rel="noreferrer" target="_blank">
-                    API Docs
-                  </a>
-                  <a href={DEMO_URL} target="_blank" rel="noreferrer">
-                    Demo
-                  </a>
-                </div>
-              </footer>
+<footer className="pbi-footer">
+  <div className="pbi-footerLeft">© {new Date().getFullYear()} Kojib · PBI</div>
+
+  <div className="pbi-footerGrid">
+    <div className="pbi-footerCol">
+      <div className="pbi-footerH">Product</div>
+      <a href="/why">Why</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/customers">Customers</a>
+    </div>
+
+    <div className="pbi-footerCol">
+      <div className="pbi-footerH">Developers</div>
+      <a href="/developers">Developer Hub</a>
+      <a href={API_DOCS} target="_blank" rel="noreferrer">
+        API Docs
+      </a>
+      <a href={TOOL_URL} target="_blank" rel="noreferrer">
+        Tool
+      </a>
+      <a href={DEMO_URL} target="_blank" rel="noreferrer">
+        Demo
+      </a>
+    </div>
+
+    <div className="pbi-footerCol">
+      <div className="pbi-footerH">Trust</div>
+      <a href="/trust">Trust Center</a>
+      <a href="/security">Security</a>
+      <a href="/status">Status</a>
+      <a href="/changelog">Changelog</a>
+    </div>
+
+    <div className="pbi-footerCol">
+      <div className="pbi-footerH">Legal</div>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </div>
+  </div>
+</footer>
+
             </section>
           </main>
         </div>

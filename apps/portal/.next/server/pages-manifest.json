@@ -2,6 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/status": "pages/status.js",
+  "/changelog": "pages/changelog.js",
   "/api/probe": "pages/api/probe.js",
-  "/status": "pages/status.js"
+  "/": "pages/index.js"
 }

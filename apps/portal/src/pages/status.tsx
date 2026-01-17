@@ -48,8 +48,8 @@ async function probeKey(key: ComponentKey): Promise<ProbeResponse> {
     // If the probe endpoint fails, treat as down but keep details meaningful.
     return { ok: false, code: r.status, url: "", checkedAtISO: nowISO() };
   }
-const j = (await r.json()) as ProbeResponse & { error?: string };
-return j;
+  const j = (await r.json()) as ProbeResponse & { error?: string };
+  return j;
 }
 
 export default function StatusPage() {
@@ -80,11 +80,11 @@ export default function StatusPage() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [items, setItems] = useState<ComponentStatus[]>([
-    { key: "api", name: "API", status: "unknown", detail: "Not checked yet" },
-    { key: "docs", name: "Docs", status: "unknown", detail: "Not checked yet" },
-    { key: "portal", name: "Portal", status: "unknown", detail: "Not checked yet" },
-    { key: "demo", name: "Demo", status: "unknown", detail: "Not checked yet" },
-    { key: "tool", name: "Tool", status: "unknown", detail: "Not checked yet" }
+    { key: "api", name: "API", status: "unknown", detail: "Pending" },
+    { key: "docs", name: "Documentation", status: "unknown", detail: "Pending" },
+    { key: "portal", name: "Console", status: "unknown", detail: "Pending" },
+    { key: "demo", name: "Demo", status: "unknown", detail: "Pending" },
+    { key: "tool", name: "Tooling", status: "unknown", detail: "Pending" }
   ]);
 
   const [lastRefreshISO, setLastRefreshISO] = useState<string>("");
@@ -95,10 +95,10 @@ export default function StatusPage() {
     // These URLs are used for the "Open →" buttons (not for probing).
     const openTargets: Array<{ key: ComponentKey; name: string; openUrl: string }> = [
       { key: "api", name: "API", openUrl: `${apiBase}/health` },
-      { key: "docs", name: "Docs", openUrl: API_DOCS },
-      { key: "portal", name: "Portal", openUrl: `${SITE_URL}/` },
+      { key: "docs", name: "Documentation", openUrl: API_DOCS },
+      { key: "portal", name: "Console", openUrl: `${SITE_URL}/` },
       { key: "demo", name: "Demo", openUrl: DEMO_URL },
-      { key: "tool", name: "Tool", openUrl: TOOL_URL }
+      { key: "tool", name: "Tooling", openUrl: TOOL_URL }
     ];
 
     const results: ComponentStatus[] = [];
@@ -119,9 +119,8 @@ export default function StatusPage() {
       const status: ComponentStatus["status"] = p.ok ? "operational" : "down";
 
       const detail = p.ok
-        ? `Operational${typeof p.ms === "number" ? ` · ${p.ms}ms` : ""}`
-       : `Unavailable${typeof p.code === "number" ? ` · HTTP ${p.code}` : ""}${(p as { error?: string }).error ? ` · ${(p as { error?: string }).error}` : ""}`;
-
+        ? `Available${typeof p.ms === "number" ? ` · ${p.ms}ms` : ""}`
+        : `Unavailable${typeof p.code === "number" ? ` · ${p.code}` : ""}${(p as { error?: string }).error ? ` · ${(p as { error?: string }).error}` : ""}`;
 
       results.push({
         key: t.key,
@@ -137,11 +136,11 @@ export default function StatusPage() {
     const anyDown = results.some((r) => r.status === "down");
     const overallStatus: ComponentStatus["status"] = anyDown ? "degraded" : "operational";
 
-    // Big-tech rollup: Portal is degraded if any critical dependency is down
+    // Customer-facing rollup: Console is degraded if any upstream dependency is down
     setItems(
       results.map((r) => {
         if (r.key === "portal" && overallStatus !== "operational") {
-          return { ...r, status: "degraded", detail: "Degraded · one or more components unavailable" };
+          return { ...r, status: "degraded", detail: "Degraded · impacted by upstream service availability" };
         }
         return r;
       })
@@ -179,7 +178,10 @@ export default function StatusPage() {
     <>
       <Head>
         <title>Status · PBI</title>
-        <meta name="description" content="PBI system status: API, portal, docs, demo, tool. Server-side probes to avoid client CORS false negatives." />
+        <meta
+          name="description"
+          content="Live service health for PBI, including API, Console, Documentation, Demo, and Tooling."
+        />
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index,follow" />
         <link rel="icon" href="/favicon.ico" />
@@ -188,7 +190,10 @@ export default function StatusPage() {
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Kojib" />
         <meta property="og:title" content="Status · PBI" />
-        <meta property="og:description" content="Live component status: API, portal, docs, demo, tool." />
+        <meta
+          property="og:description"
+          content="Real-time service availability for PBI: API, Console, Documentation, Demo, and Tooling."
+        />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
       </Head>
@@ -204,21 +209,21 @@ export default function StatusPage() {
                 <div>
                   <div className="pbi-pill">
                     <span className="pbi-pillDot" />
-                    Status · server probes
+                    Service Status
                   </div>
 
                   <h1 className="pbi-h1">
-                    System status: <span>{overall.label}</span>
+                    Current status: <span>{overall.label}</span>
                   </h1>
 
                   <p className="pbi-lead">
-                    This page performs component checks via server-side probes to avoid browser CORS false negatives. Status reflects actual reachability of
-                    each component.
+                    This page provides current availability and performance signals across PBI services. Status reflects real service
+                    reachability and is updated through continuous health checks.
                   </p>
 
                   <div className="pbi-ctaRow">
                     <button className="pbi-btnPrimary" type="button" onClick={refresh} disabled={loading}>
-                      {loading ? "Checking…" : "Refresh"} <span aria-hidden>→</span>
+                      {loading ? "Checking…" : "Run a check"} <span aria-hidden>→</span>
                     </button>
                     <a className="pbi-btnGhost" href="/trust">
                       Trust Center
@@ -227,12 +232,12 @@ export default function StatusPage() {
                       Security
                     </a>
                     <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
-                      API docs
+                      Documentation
                     </a>
                   </div>
 
                   <div className="pbi-card" style={{ marginTop: 14 }}>
-                    <div className="pbi-proofLabel">Last checked</div>
+                    <div className="pbi-proofLabel">Last updated</div>
                     <div className="pbi-cardBody" style={{ marginTop: 6 }}>
                       {fmtLocal(lastRefreshISO)}
                     </div>
@@ -242,29 +247,33 @@ export default function StatusPage() {
                 <aside className="pbi-side">
                   <div className="pbi-sideTop">
                     <div>
-                      <div className="pbi-proofLabel">Components</div>
-                      <div className="pbi-sideTitle">What’s included</div>
+                      <div className="pbi-proofLabel">Services</div>
+                      <div className="pbi-sideTitle">Coverage</div>
                     </div>
                     <div className="pbi-sideTag">{overall.label}</div>
                   </div>
 
                   <div className="pbi-sideList">
-                    <Bullet>API verification endpoints</Bullet>
-                    <Bullet>Docs reference</Bullet>
-                    <Bullet>Portal landing</Bullet>
-                    <Bullet>Demo experience</Bullet>
-                    <Bullet>Tool harness</Bullet>
+                    <Bullet>Public API</Bullet>
+                    <Bullet>Documentation</Bullet>
+                    <Bullet>Console</Bullet>
+                    <Bullet>Demo environment</Bullet>
+                    <Bullet>Tooling</Bullet>
                   </div>
 
                   <div className="pbi-proofLabel" style={{ marginTop: 10 }}>
-                    Note: “Portal” may show degraded when dependencies are down.
+                    Note: Console status may reflect upstream service impact during incidents.
                   </div>
                 </aside>
               </div>
             </section>
 
             <section className="pbi-section">
-              <SectionHead kicker="Component health" title="Current component status" body="Live probes with measured latency when available." />
+              <SectionHead
+                kicker="Service health"
+                title="Availability by service"
+                body="Current availability and response time signals are shown per service."
+              />
 
               <div style={{ display: "grid", gap: 10 }}>
                 {items.map((it) => (
@@ -273,9 +282,9 @@ export default function StatusPage() {
               </div>
 
               <div className="pbi-card" style={{ marginTop: 14 }}>
-                <div className="pbi-cardTitle">Incident handling (enterprise)</div>
+                <div className="pbi-cardTitle">Incident response</div>
                 <div className="pbi-cardBody" style={{ marginTop: 6 }}>
-                  Enterprises can request incident response expectations, escalation routes, and environment separation guidance through{" "}
+                  For incident response expectations, escalation paths, and environment guidance, visit Enterprise support at{" "}
                   <a href="/enterprise">/enterprise</a>.
                 </div>
               </div>
@@ -292,7 +301,13 @@ export default function StatusPage() {
 function StatusRow({ item }: { item: ComponentStatus }) {
   const badge = useMemo(() => {
     const label =
-      item.status === "operational" ? "Operational" : item.status === "degraded" ? "Degraded" : item.status === "down" ? "Down" : "Unknown";
+      item.status === "operational"
+        ? "Operational"
+        : item.status === "degraded"
+        ? "Degraded"
+        : item.status === "down"
+        ? "Down"
+        : "Checking";
 
     const style =
       item.status === "operational"
@@ -317,7 +332,7 @@ function StatusRow({ item }: { item: ComponentStatus }) {
             {item.detail}
           </div>
           <div className="pbi-proofLabel" style={{ marginTop: 8 }}>
-            Checked: {fmtLocal(item.checkedAtISO)}
+            Last updated: {fmtLocal(item.checkedAtISO)}
           </div>
         </div>
 
