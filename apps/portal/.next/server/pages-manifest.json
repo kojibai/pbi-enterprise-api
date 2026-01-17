@@ -2,8 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/why": "pages/why.js",
-  "/customers": "pages/customers.js",
-  "/changelog": "pages/changelog.js",
+  "/pricing": "pages/pricing.js",
+  "/enterprise": "pages/enterprise.js",
+  "/developers": "pages/developers.js",
   "/": "pages/index.js"
 }

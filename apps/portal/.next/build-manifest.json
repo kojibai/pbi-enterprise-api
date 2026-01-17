@@ -27,20 +27,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/changelog": [
+    "/developers": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/changelog.js"
+      "static/chunks/pages/developers.js"
     ],
-    "/customers": [
+    "/enterprise": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/customers.js"
-    ],
-    "/why": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/why.js"
+      "static/chunks/pages/enterprise.js"
     ]
   },
   "ampFirstPages": []
