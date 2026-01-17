@@ -27,10 +27,10 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/enterprise": [
+    "/developers": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/enterprise.js"
+      "static/chunks/pages/developers.js"
     ]
   },
   "ampFirstPages": []
