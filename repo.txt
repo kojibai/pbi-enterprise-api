@@ -1,0 +1,562 @@
+.
+├── .env
+├── .env.example
+├── .gitattributes
+├── .gitignore
+├── apps
+│   └── portal
+│       ├── .env
+│       ├── .env.example
+│       ├── .next
+│       │   ├── build-manifest.json
+│       │   ├── cache
+│       │   │   ├── .tsbuildinfo
+│       │   │   ├── swc
+│       │   │   │   └── plugins
+│       │   │   │       └── v7_macos_aarch64_0.106.15
+│       │   │   └── webpack
+│       │   │       ├── client-development
+│       │   │       │   ├── 0.pack.gz
+│       │   │       │   ├── 1.pack.gz
+│       │   │       │   ├── 10.pack.gz
+│       │   │       │   ├── 11.pack.gz
+│       │   │       │   ├── 12.pack.gz
+│       │   │       │   ├── 13.pack.gz
+│       │   │       │   ├── 14.pack.gz
+│       │   │       │   ├── 15.pack.gz
+│       │   │       │   ├── 16.pack.gz
+│       │   │       │   ├── 17.pack.gz
+│       │   │       │   ├── 18.pack.gz
+│       │   │       │   ├── 19.pack.gz
+│       │   │       │   ├── 2.pack.gz
+│       │   │       │   ├── 20.pack.gz
+│       │   │       │   ├── 21.pack.gz
+│       │   │       │   ├── 22.pack.gz
+│       │   │       │   ├── 3.pack.gz
+│       │   │       │   ├── 4.pack.gz
+│       │   │       │   ├── 5.pack.gz
+│       │   │       │   ├── 6.pack.gz
+│       │   │       │   ├── 7.pack.gz
+│       │   │       │   ├── 8.pack.gz
+│       │   │       │   ├── 9.pack.gz
+│       │   │       │   ├── index.pack.gz
+│       │   │       │   └── index.pack.gz.old
+│       │   │       ├── client-production
+│       │   │       │   ├── 0.pack
+│       │   │       │   ├── 1.pack
+│       │   │       │   ├── 10.pack
+│       │   │       │   ├── 11.pack
+│       │   │       │   ├── 12.pack
+│       │   │       │   ├── 13.pack
+│       │   │       │   ├── 14.pack
+│       │   │       │   ├── 15.pack
+│       │   │       │   ├── 2.pack
+│       │   │       │   ├── 3.pack
+│       │   │       │   ├── 4.pack
+│       │   │       │   ├── 5.pack
+│       │   │       │   ├── 6.pack
+│       │   │       │   ├── 7.pack
+│       │   │       │   ├── 8.pack
+│       │   │       │   ├── 9.pack
+│       │   │       │   ├── index.pack
+│       │   │       │   └── index.pack.old
+│       │   │       ├── edge-server-production
+│       │   │       │   ├── 0.pack
+│       │   │       │   └── index.pack
+│       │   │       ├── server-development
+│       │   │       │   ├── 0.pack.gz
+│       │   │       │   ├── 1.pack.gz
+│       │   │       │   ├── 10.pack.gz
+│       │   │       │   ├── 11.pack.gz
+│       │   │       │   ├── 12.pack.gz
+│       │   │       │   ├── 13.pack.gz
+│       │   │       │   ├── 14.pack.gz
+│       │   │       │   ├── 15.pack.gz
+│       │   │       │   ├── 16.pack.gz
+│       │   │       │   ├── 17.pack.gz
+│       │   │       │   ├── 18.pack.gz
+│       │   │       │   ├── 19.pack.gz
+│       │   │       │   ├── 2.pack.gz
+│       │   │       │   ├── 20.pack.gz
+│       │   │       │   ├── 21.pack.gz
+│       │   │       │   ├── 3.pack.gz
+│       │   │       │   ├── 4.pack.gz
+│       │   │       │   ├── 5.pack.gz
+│       │   │       │   ├── 6.pack.gz
+│       │   │       │   ├── 7.pack.gz
+│       │   │       │   ├── 8.pack.gz
+│       │   │       │   ├── 9.pack.gz
+│       │   │       │   ├── index.pack.gz
+│       │   │       │   └── index.pack.gz.old
+│       │   │       └── server-production
+│       │   │           ├── 0.pack
+│       │   │           ├── 1.pack
+│       │   │           ├── 2.pack
+│       │   │           ├── 3.pack
+│       │   │           ├── 4.pack
+│       │   │           ├── 5.pack
+│       │   │           ├── 6.pack
+│       │   │           ├── 7.pack
+│       │   │           ├── index.pack
+│       │   │           └── index.pack.old
+│       │   ├── package.json
+│       │   ├── react-loadable-manifest.json
+│       │   ├── server
+│       │   │   ├── interception-route-rewrite-manifest.js
+│       │   │   ├── middleware-build-manifest.js
+│       │   │   ├── middleware-manifest.json
+│       │   │   ├── middleware-react-loadable-manifest.js
+│       │   │   ├── next-font-manifest.js
+│       │   │   ├── next-font-manifest.json
+│       │   │   ├── pages
+│       │   │   │   ├── _app.js
+│       │   │   │   ├── _document.js
+│       │   │   │   ├── _error.js
+│       │   │   │   ├── about.js
+│       │   │   │   ├── api
+│       │   │   │   │   └── probe.js
+│       │   │   │   ├── changelog.js
+│       │   │   │   ├── customers.js
+│       │   │   │   ├── developers.js
+│       │   │   │   ├── enterprise.js
+│       │   │   │   ├── index.js
+│       │   │   │   ├── pricing.js
+│       │   │   │   ├── security.js
+│       │   │   │   ├── status.js
+│       │   │   │   ├── trust.js
+│       │   │   │   └── why.js
+│       │   │   ├── pages-manifest.json
+│       │   │   ├── vendor-chunks
+│       │   │   │   ├── @swc.js
+│       │   │   │   └── next.js
+│       │   │   ├── webpack-api-runtime.js
+│       │   │   └── webpack-runtime.js
+│       │   ├── static
+│       │   │   ├── chunks
+│       │   │   │   ├── main.js
+│       │   │   │   ├── pages
+│       │   │   │   │   ├── _app.js
+│       │   │   │   │   ├── _error.js
+│       │   │   │   │   ├── about.js
+│       │   │   │   │   ├── changelog.js
+│       │   │   │   │   ├── customers.js
+│       │   │   │   │   ├── developers.js
+│       │   │   │   │   ├── enterprise.js
+│       │   │   │   │   ├── index.js
+│       │   │   │   │   ├── pricing.js
+│       │   │   │   │   ├── security.js
+│       │   │   │   │   ├── status.js
+│       │   │   │   │   ├── trust.js
+│       │   │   │   │   └── why.js
+│       │   │   │   ├── polyfills.js
+│       │   │   │   ├── react-refresh.js
+│       │   │   │   └── webpack.js
+│       │   │   ├── development
+│       │   │   │   ├── _buildManifest.js
+│       │   │   │   └── _ssgManifest.js
+│       │   │   └── webpack
+│       │   │       ├── 021649b2a8296311.webpack.hot-update.json
+│       │   │       ├── 084bfa67de2ec56b.webpack.hot-update.json
+│       │   │       ├── 0c3931a033ec245b.webpack.hot-update.json
+│       │   │       ├── 1317792187e09f3c.webpack.hot-update.json
+│       │   │       ├── 14d1ac0c6d6100ea.webpack.hot-update.json
+│       │   │       ├── 180769bd96efcf9c.webpack.hot-update.json
+│       │   │       ├── 183a027f75de1c88.webpack.hot-update.json
+│       │   │       ├── 24088e09eee38052.webpack.hot-update.json
+│       │   │       ├── 279959c4860658bd.webpack.hot-update.json
+│       │   │       ├── 330d19a5e74c7356.webpack.hot-update.json
+│       │   │       ├── 353a5da4eb5c7934.webpack.hot-update.json
+│       │   │       ├── 3822d5806740f047.webpack.hot-update.json
+│       │   │       ├── 4bef55ed69a2c4a0.webpack.hot-update.json
+│       │   │       ├── 4c34ddece97b0eae.webpack.hot-update.json
+│       │   │       ├── 4cedad03235ce4d8.webpack.hot-update.json
+│       │   │       ├── 539ef7419050ace4.webpack.hot-update.json
+│       │   │       ├── 59786ecde8bdda4b.webpack.hot-update.json
+│       │   │       ├── 5b1e03ae3f17298f.webpack.hot-update.json
+│       │   │       ├── 633457081244afec._.hot-update.json
+│       │   │       ├── 67996e53617e1ecd.webpack.hot-update.json
+│       │   │       ├── 6dca6a5806b14910.webpack.hot-update.json
+│       │   │       ├── 72bf2a1024ff695d.webpack.hot-update.json
+│       │   │       ├── 7c45b8155d9b0745.webpack.hot-update.json
+│       │   │       ├── 81ae0dd8ff24e417.webpack.hot-update.json
+│       │   │       ├── 8666ef2518fd3968.webpack.hot-update.json
+│       │   │       ├── 893eeecec84bbf90.webpack.hot-update.json
+│       │   │       ├── 8a181446e82c9bb3.webpack.hot-update.json
+│       │   │       ├── 8c8da49f1f2e8966.webpack.hot-update.json
+│       │   │       ├── 9321a733497958f7.webpack.hot-update.json
+│       │   │       ├── a5f4f220e0e9e23f.webpack.hot-update.json
+│       │   │       ├── aa03efc942e0be80.webpack.hot-update.json
+│       │   │       ├── adefbbd0e6b67a61.webpack.hot-update.json
+│       │   │       ├── ae2eb3b650a295ba.webpack.hot-update.json
+│       │   │       ├── b9f9c8f2cb62b8f2.webpack.hot-update.json
+│       │   │       ├── bf6e498b8d0bbf14.webpack.hot-update.json
+│       │   │       ├── c4bfbab5195941dc.webpack.hot-update.json
+│       │   │       ├── ccb3ff15da59ebfc.webpack.hot-update.json
+│       │   │       ├── d8288dd87488defb.webpack.hot-update.json
+│       │   │       ├── da8e93c81f88fa79.webpack.hot-update.json
+│       │   │       ├── dd375dfb5595b816.webpack.hot-update.json
+│       │   │       ├── eab6921a1c57dbac.webpack.hot-update.json
+│       │   │       ├── ebeb472897ec5048.webpack.hot-update.json
+│       │   │       ├── f7362bf7af8ee5ae.webpack.hot-update.json
+│       │   │       ├── pages
+│       │   │       │   ├── _app.084bfa67de2ec56b.hot-update.js
+│       │   │       │   ├── _app.0c3931a033ec245b.hot-update.js
+│       │   │       │   ├── _app.183a027f75de1c88.hot-update.js
+│       │   │       │   ├── _app.a5f4f220e0e9e23f.hot-update.js
+│       │   │       │   ├── _app.c4bfbab5195941dc.hot-update.js
+│       │   │       │   ├── _app.dd375dfb5595b816.hot-update.js
+│       │   │       │   ├── _error.5b1e03ae3f17298f.hot-update.js
+│       │   │       │   ├── _error.adefbbd0e6b67a61.hot-update.js
+│       │   │       │   ├── index.adefbbd0e6b67a61.hot-update.js
+│       │   │       │   ├── security.330d19a5e74c7356.hot-update.js
+│       │   │       │   ├── security.4c34ddece97b0eae.hot-update.js
+│       │   │       │   ├── status.14d1ac0c6d6100ea.hot-update.js
+│       │   │       │   └── status.180769bd96efcf9c.hot-update.js
+│       │   │       ├── webpack.021649b2a8296311.hot-update.js
+│       │   │       ├── webpack.084bfa67de2ec56b.hot-update.js
+│       │   │       ├── webpack.0c3931a033ec245b.hot-update.js
+│       │   │       ├── webpack.1317792187e09f3c.hot-update.js
+│       │   │       ├── webpack.14d1ac0c6d6100ea.hot-update.js
+│       │   │       ├── webpack.180769bd96efcf9c.hot-update.js
+│       │   │       ├── webpack.183a027f75de1c88.hot-update.js
+│       │   │       ├── webpack.24088e09eee38052.hot-update.js
+│       │   │       ├── webpack.279959c4860658bd.hot-update.js
+│       │   │       ├── webpack.330d19a5e74c7356.hot-update.js
+│       │   │       ├── webpack.353a5da4eb5c7934.hot-update.js
+│       │   │       ├── webpack.3822d5806740f047.hot-update.js
+│       │   │       ├── webpack.4bef55ed69a2c4a0.hot-update.js
+│       │   │       ├── webpack.4c34ddece97b0eae.hot-update.js
+│       │   │       ├── webpack.4cedad03235ce4d8.hot-update.js
+│       │   │       ├── webpack.539ef7419050ace4.hot-update.js
+│       │   │       ├── webpack.59786ecde8bdda4b.hot-update.js
+│       │   │       ├── webpack.5b1e03ae3f17298f.hot-update.js
+│       │   │       ├── webpack.67996e53617e1ecd.hot-update.js
+│       │   │       ├── webpack.6dca6a5806b14910.hot-update.js
+│       │   │       ├── webpack.72bf2a1024ff695d.hot-update.js
+│       │   │       ├── webpack.7c45b8155d9b0745.hot-update.js
+│       │   │       ├── webpack.81ae0dd8ff24e417.hot-update.js
+│       │   │       ├── webpack.8666ef2518fd3968.hot-update.js
+│       │   │       ├── webpack.893eeecec84bbf90.hot-update.js
+│       │   │       ├── webpack.8a181446e82c9bb3.hot-update.js
+│       │   │       ├── webpack.8c8da49f1f2e8966.hot-update.js
+│       │   │       ├── webpack.9321a733497958f7.hot-update.js
+│       │   │       ├── webpack.a5f4f220e0e9e23f.hot-update.js
+│       │   │       ├── webpack.aa03efc942e0be80.hot-update.js
+│       │   │       ├── webpack.adefbbd0e6b67a61.hot-update.js
+│       │   │       ├── webpack.ae2eb3b650a295ba.hot-update.js
+│       │   │       ├── webpack.b9f9c8f2cb62b8f2.hot-update.js
+│       │   │       ├── webpack.bf6e498b8d0bbf14.hot-update.js
+│       │   │       ├── webpack.c4bfbab5195941dc.hot-update.js
+│       │   │       ├── webpack.ccb3ff15da59ebfc.hot-update.js
+│       │   │       ├── webpack.d8288dd87488defb.hot-update.js
+│       │   │       ├── webpack.da8e93c81f88fa79.hot-update.js
+│       │   │       ├── webpack.dd375dfb5595b816.hot-update.js
+│       │   │       ├── webpack.eab6921a1c57dbac.hot-update.js
+│       │   │       ├── webpack.ebeb472897ec5048.hot-update.js
+│       │   │       └── webpack.f7362bf7af8ee5ae.hot-update.js
+│       │   └── trace
+│       ├── next-env.d.ts
+│       ├── next.config.mjs
+│       ├── package-lock.json
+│       ├── package.json
+│       ├── postcss.config.js
+│       ├── public
+│       │   ├── favicon.ico
+│       │   ├── kojib.png
+│       │   ├── kojib.svg
+│       │   ├── logo.png
+│       │   ├── logo.svg
+│       │   ├── pbi_1.png
+│       │   ├── pbi_2.png
+│       │   ├── pbi_3.png
+│       │   ├── pbi_4.png
+│       │   ├── pbi_5.png
+│       │   ├── pbi_6.png
+│       │   └── pbi_7.png
+│       ├── src
+│       │   ├── auth
+│       │   │   └── callback.tsx
+│       │   ├── lib
+│       │   │   ├── api.ts
+│       │   │   ├── plan.ts
+│       │   │   └── types.ts
+│       │   ├── pages
+│       │   │   ├── _app.tsx
+│       │   │   ├── _error.tsx
+│       │   │   ├── 404.tsx
+│       │   │   ├── 500.tsx
+│       │   │   ├── about.tsx
+│       │   │   ├── api
+│       │   │   │   └── probe.ts
+│       │   │   ├── api-keys.tsx
+│       │   │   ├── app.tsx
+│       │   │   ├── auth
+│       │   │   │   └── callback.tsx
+│       │   │   ├── billing
+│       │   │   │   ├── canceled.tsx
+│       │   │   │   ├── index.tsx
+│       │   │   │   └── success.tsx
+│       │   │   ├── changelog.tsx
+│       │   │   ├── console.tsx
+│       │   │   ├── customers.tsx
+│       │   │   ├── developers.tsx
+│       │   │   ├── enterprise.tsx
+│       │   │   ├── index.tsx
+│       │   │   ├── login.tsx
+│       │   │   ├── pricing.tsx
+│       │   │   ├── privacy.tsx
+│       │   │   ├── security.tsx
+│       │   │   ├── status.tsx
+│       │   │   ├── terms.tsx
+│       │   │   ├── trust.tsx
+│       │   │   ├── usage.tsx
+│       │   │   └── why.tsx
+│       │   └── styles
+│       │       ├── control-panel.css
+│       │       ├── globals.css
+│       │       └── landing.css
+│       ├── tailwind.config.js
+│       └── tsconfig.json
+├── CLA.md
+├── COMMERCIAL_LICENSE.md
+├── CONTRIBUTING.md
+├── docker-compose.yml
+├── Dockerfile
+├── examples
+│   ├── attester-web
+│   │   ├── index.html
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── api.js
+│   │   │   ├── api.ts
+│   │   │   ├── b64url.js
+│   │   │   ├── b64url.ts
+│   │   │   ├── cbor.js
+│   │   │   ├── cbor.ts
+│   │   │   ├── main.js
+│   │   │   ├── main.tsx
+│   │   │   ├── pem.js
+│   │   │   ├── pem.ts
+│   │   │   ├── styles.css
+│   │   │   ├── webauthn.js
+│   │   │   └── webauthn.ts
+│   │   ├── tsconfig.json
+│   │   ├── vercel.json
+│   │   └── vite.config.ts
+│   ├── axum-wrap
+│   │   └── demo
+│   ├── express-wrap
+│   │   └── demo
+│   └── fastapi-wrap
+│       └── demo
+├── LICENSE
+├── LICENSE-AGPL-3.0.txt
+├── openapi.yaml
+├── package-lock.json
+├── package.json
+├── pbi-stdlib
+│   ├── docs
+│   │   ├── audit-readiness.md
+│   │   ├── compliance-audit.md
+│   │   ├── faq.md
+│   │   ├── one-page.md
+│   │   ├── PBI-MA-1.0.md
+│   │   ├── PBI-Spec-1.0.md
+│   │   ├── purpose-profiles.md
+│   │   ├── security-considerations.md
+│   │   └── security-posture.md
+│   ├── pbi-attest-pack
+│   │   ├── action.json
+│   │   ├── attestation.json
+│   │   ├── attestor-trust.signed.json
+│   │   ├── manifest.json
+│   │   ├── policy.json
+│   │   ├── pubkey.jwk.json
+│   │   ├── README.txt
+│   │   └── receipt.json
+│   ├── pbi-pack
+│   │   ├── actions
+│   │   │   └── 0001.json
+│   │   ├── manifest.json
+│   │   ├── proofs
+│   │   │   └── 0001.proof.json
+│   │   ├── pubkeys
+│   │   │   └── Y3JlZC0wMS1wYmktdGVzdA.jwk.json
+│   │   ├── README.txt
+│   │   └── receipts
+│   │       └── 0001.json
+│   ├── pbi-pack-2
+│   │   ├── actions
+│   │   │   ├── 0001.json
+│   │   │   └── 0002.json
+│   │   ├── manifest.json
+│   │   ├── proofs
+│   │   │   ├── 0001.proof.json
+│   │   │   └── 0002.proof.json
+│   │   ├── pubkeys
+│   │   │   └── Y3JlZC0wMS1wYmktdGVzdA.jwk.json
+│   │   ├── README.txt
+│   │   └── receipts
+│   │       ├── 0001.json
+│   │       └── 0002.json
+│   ├── pbi-pack-demo
+│   │   ├── pack-1
+│   │   │   ├── actions
+│   │   │   │   └── 0001.json
+│   │   │   ├── manifest.json
+│   │   │   ├── proofs
+│   │   │   │   └── 0001.proof.json
+│   │   │   ├── pubkeys
+│   │   │   │   └── Y3JlZC0wMS1wYmktdGVzdA.jwk.json
+│   │   │   ├── README.txt
+│   │   │   └── receipts
+│   │   │       └── 0001.json
+│   │   ├── pack-2
+│   │   │   ├── actions
+│   │   │   │   ├── 0001.json
+│   │   │   │   └── 0002.json
+│   │   │   ├── manifest.json
+│   │   │   ├── proofs
+│   │   │   │   ├── 0001.proof.json
+│   │   │   │   └── 0002.proof.json
+│   │   │   ├── pubkeys
+│   │   │   │   └── Y3JlZC0wMS1wYmktdGVzdA.jwk.json
+│   │   │   ├── README.txt
+│   │   │   └── receipts
+│   │   │       ├── 0001.json
+│   │   │       └── 0002.json
+│   │   ├── trust-expired.json
+│   │   └── trust-revoked.json
+│   ├── pbi-verify
+│   │   ├── bin
+│   │   │   ├── pbi-attest-pack-verify.ts
+│   │   │   ├── pbi-attestor-keyid.ts
+│   │   │   ├── pbi-attestor-trust-sign.ts
+│   │   │   ├── pbi-attestor-trust-verify.ts
+│   │   │   ├── pbi-pack-demo.ts
+│   │   │   ├── pbi-pack-seal.ts
+│   │   │   ├── pbi-pack-verify.ts
+│   │   │   └── pbi-verify.ts
+│   │   ├── conformance
+│   │   │   ├── external-adapter.ts
+│   │   │   ├── generate-vectors.ts
+│   │   │   ├── README.md
+│   │   │   ├── run.ts
+│   │   │   └── types.ts
+│   │   ├── interop
+│   │   │   ├── attestation
+│   │   │   │   ├── pbi-attest-1.0.schema.json
+│   │   │   │   └── trust-attestors.example.json
+│   │   │   ├── json-schema
+│   │   │   │   ├── pbi-action-1.0.schema.json
+│   │   │   │   ├── pbi-action-profiles-1.0.json
+│   │   │   │   ├── pbi-chal-1.0.schema.json
+│   │   │   │   └── pbi-receipt-1.0.schema.json
+│   │   │   └── openapi
+│   │   │       └── pbi-minimal.yaml
+│   │   ├── issuer-es256-private.pem
+│   │   ├── issuer-pubkey.jwk.json
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── pbi-conf-1.0.json
+│   │   ├── README.md
+│   │   ├── scripts
+│   │   │   └── verify-vectors.ts
+│   │   ├── src
+│   │   │   ├── attest.ts
+│   │   │   ├── attestorTrust.ts
+│   │   │   ├── base64url.ts
+│   │   │   ├── hash.ts
+│   │   │   ├── index.ts
+│   │   │   ├── jcs.ts
+│   │   │   ├── policy.ts
+│   │   │   ├── policyHash.ts
+│   │   │   ├── profile.ts
+│   │   │   ├── trustBundle.ts
+│   │   │   ├── types.ts
+│   │   │   ├── verify.ts
+│   │   │   └── webauthn.ts
+│   │   ├── test-vectors
+│   │   │   └── pbi-conf-1.0.json
+│   │   ├── trust-attestors.json
+│   │   ├── trust-attestors.signed.json
+│   │   ├── trust-roots.json
+│   │   ├── trust.json
+│   │   ├── tsconfig.json
+│   │   └── v1
+│   │       └── pbi
+│   │           └── verify.json
+│   ├── public
+│   │   └── .well-known
+│   │       └── security.txt
+│   ├── security
+│   │   ├── SECURITY.md
+│   │   └── threat-model.md
+│   └── test-vectors
+│       └── pbi-vec-1.0.json
+├── public
+│   ├── favicon.ico
+│   ├── kojib.png
+│   └── kojib.svg
+├── README.md
+├── scripts
+│   ├── close-month.ts
+│   ├── dev.ts
+│   ├── provision-api-key.ts
+│   ├── run-migrations.ts
+│   └── seed-enterprise-key.ts
+├── SECURITY.md
+├── src
+│   ├── app.ts
+│   ├── billing
+│   │   ├── invoice.ts
+│   │   ├── meter.ts
+│   │   ├── pricing.ts
+│   │   ├── quota.ts
+│   │   └── types.ts
+│   ├── config.ts
+│   ├── db
+│   │   ├── migrations.ts
+│   │   ├── pool.ts
+│   │   ├── queries
+│   │   │   ├── apiKeys.ts
+│   │   │   ├── challenges.ts
+│   │   │   ├── invoices.ts
+│   │   │   ├── receipts.ts
+│   │   │   └── usage.ts
+│   │   └── schema.sql
+│   ├── middleware
+│   │   ├── apiKeyAuth.ts
+│   │   ├── errorHandler.ts
+│   │   ├── portalSession.ts
+│   │   ├── rateLimit.ts
+│   │   └── requestId.ts
+│   ├── pbi
+│   │   ├── canonical.ts
+│   │   ├── challengeStore.ts
+│   │   ├── receipt.ts
+│   │   ├── types.ts
+│   │   └── verify.ts
+│   ├── routes
+│   │   ├── admin.ts
+│   │   ├── billing.ts
+│   │   ├── demo.ts
+│   │   ├── health.ts
+│   │   ├── pbi.ts
+│   │   ├── portal.ts
+│   │   ├── public.ts
+│   │   └── stripe.ts
+│   ├── server.ts
+│   └── util
+│       ├── base64url.ts
+│       ├── crypto.ts
+│       ├── email.ts
+│       ├── logger.ts
+│       └── time.ts
+├── TRADEMARKS.md
+├── trust.example.json
+└── tsconfig.json
+
+89 directories, 470 files
+

@@ -11,6 +11,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 *.map
+# Next.js build output
+.next/
+**/.next/
+out/
+.vercel/
 
 # package managers
 npm-debug.log*
@@ -51,7 +56,16 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
+# Workspace noise
+apps/**/.next/
+apps/**/dist/
+apps/**/node_modules/
+apps/**/out/
+apps/**/logs/
+apps/**/temp/
+apps/**/coverage/
+apps/**/report/s/
+apps/**/.cache/ 
 # -----------------------
 # Env / Secrets
 # -----------------------

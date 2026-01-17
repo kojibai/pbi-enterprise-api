@@ -1,0 +1,12 @@
+title = "pbi-enterprise-api gitleaks config"
+
+[allowlist]
+description = "Allowlisted known test vectors / WebAuthn blobs (not credentials)"
+paths = [
+  '''pbi-stdlib/pbi-verify/pbi-conf-1\.0\.json''',
+  '''pbi-stdlib/pbi-verify/test-vectors/.*''',
+  '''pbi-stdlib/pbi-verify/v1/pbi/verify\.json''',
+  '''pbi-stdlib/pbi-verify/pbi-pack-demo/.*''',
+  '''pbi-stdlib/pbi-pack.*/.*''',
+  '''pbi-stdlib/pbi-attest-pack/.*'''
+]
