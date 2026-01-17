@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: PBI Minimal API
+  version: "1.0.0"
+paths:
+  /v1/pbi/challenge:
+    post:
+      summary: Issue an authorization challenge bound to an action hash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../json-schema/pbi-action-1.0.schema.json"
+      responses:
+        "200":
+          description: Challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: "../json-schema/pbi-chal-1.0.schema.json"
+
+  /v1/pbi/verify:
+    post:
+      summary: Verify a PBI receipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../json-schema/pbi-receipt-1.0.schema.json"
+      responses:
+        "200":
+          description: Verification decision
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [decision, receiptHash]
+                properties:
+                  decision:
+                    type: string
+                    enum: [accept, reject]
+                  receiptHash:
+                    type: string
+                    pattern: "^[0-9a-f]{64}$"
+                  reason:
+                    type: string

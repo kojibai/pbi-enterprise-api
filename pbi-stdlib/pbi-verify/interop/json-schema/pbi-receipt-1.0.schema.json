@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbi.kojib.com/schemas/pbi-receipt-1.0.schema.json",
+  "title": "PBI Receipt (pbi-receipt-1.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ver", "challengeId", "challenge", "actionHash", "aud", "purpose", "authorSig"],
+  "properties": {
+    "ver": { "const": "pbi-receipt-1.0" },
+    "challengeId": { "type": "string", "minLength": 1 },
+    "challenge": { "type": "string", "minLength": 16 },
+    "actionHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "aud": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "authorSig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "credId", "authenticatorData", "clientDataJSON", "signature"],
+      "properties": {
+        "alg": { "const": "webauthn-es256" },
+        "credId": { "type": "string", "minLength": 1 },
+        "authenticatorData": { "type": "string", "minLength": 8 },
+        "clientDataJSON": { "type": "string", "minLength": 8 },
+        "signature": { "type": "string", "minLength": 8 }
+      }
+    }
+  }
+}

@@ -23,8 +23,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "verify:vectors": "node dist/scripts/verify-vectors.js",
-    "demo": "rm -rf dist && npm run build && node dist/bin/pbi-pack-demo.js --packSrc ../pbi-pack --outDir ../pbi-pack-demo --privkey ./issuer-es256-private.pem --trust ./trust.json"
-
+    "demo": "rm -rf dist && npm run build && node dist/bin/pbi-pack-demo.js --packSrc ../pbi-pack --outDir ../pbi-pack-demo --privkey ./issuer-es256-private.pem --trust ./trust.json",
+    "conformance": "rm -rf dist && npm run build && node dist/conformance/generate-vectors.js pbi-conf-1.0.json api.kojib.com https://pbi.kojib.com && node dist/conformance/run.js pbi-conf-1.0.json && node dist/conformance/run.js pbi-conf-1.0.json --external \"node dist/conformance/external-adapter.js\""
   },
   "engines": {
     "node": ">=18"
