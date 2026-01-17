@@ -218,34 +218,35 @@ export default function HomePage() {
   }
 
   const ogImage = `${SITE_URL}/pbi_1.png`;
-const [calendlyHeight, setCalendlyHeight] = useState<number>(720);
 
-useEffect(() => {
-  if (!salesOpen) return;
+  const [calendlyHeight, setCalendlyHeight] = useState<number>(720);
 
-  const vv = window.visualViewport;
+  useEffect(() => {
+    if (!salesOpen) return;
 
-  const compute = () => {
-    // visualViewport is best on iOS because it tracks the Safari UI bars
-    const vh = Math.floor((vv?.height ?? window.innerHeight));
+    const vv = window.visualViewport;
 
-    // Reserve space for: modal header + copy + padding + email button
-    const reserved = 320;
-    const h = Math.max(520, vh - reserved);
+    const compute = () => {
+      // visualViewport is best on iOS because it tracks the Safari UI bars
+      const vh = Math.floor(vv?.height ?? window.innerHeight);
 
-    setCalendlyHeight(h);
-  };
+      // Reserve space for: modal header + copy + padding + email button
+      const reserved = 320;
+      const h = Math.max(520, vh - reserved);
 
-  compute();
+      setCalendlyHeight(h);
+    };
 
-  vv?.addEventListener("resize", compute);
-  window.addEventListener("resize", compute);
+    compute();
 
-  return () => {
-    vv?.removeEventListener("resize", compute);
-    window.removeEventListener("resize", compute);
-  };
-}, [salesOpen, securityOpen]);
+    vv?.addEventListener("resize", compute);
+    window.addEventListener("resize", compute);
+
+    return () => {
+      vv?.removeEventListener("resize", compute);
+      window.removeEventListener("resize", compute);
+    };
+  }, [salesOpen, securityOpen]);
 
   return (
     <>
@@ -301,7 +302,13 @@ useEffect(() => {
         <div className="pbi-shell">
           {/* TOP BAR */}
           <header className="pbi-topbar">
-            <div className="pbi-brand">
+            <div
+              className="pbi-brand"
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push("/")}
+              onKeyDown={(e) => (e.key === "Enter" ? router.push("/") : null)}
+            >
               <div className="pbi-mark" aria-hidden>
                 <span className="pbi-markDot" />
               </div>
@@ -311,15 +318,25 @@ useEffect(() => {
               </div>
             </div>
 
-            <nav className="pbi-nav">
-              <a href="#how" rel="noreferrer">
-                How it works
-              </a>
+            <nav className="pbi-nav" aria-label="Primary">
+              {/* One-page anchors (keep) */}
+              <a href="#how">How it works</a>
+              <a href="#tools">Demo</a>
+              <a href="#pricing">Pricing</a>
+
+              {/* Premium site pages (new) */}
+              <a href="/developers">Developers</a>
+              <a href="/customers">Customers</a>
+              <a href="/trust">Trust</a>
+              <a href="/status">Status</a>
+              <a href="/changelog">Changelog</a>
+
+              {/* External reference */}
               <a href={API_DOCS} rel="noreferrer" target="_blank">
                 API
               </a>
-              <a href="#tools">Demo</a>
-              <a href="#pricing">Pricing</a>
+
+              {/* Strong CTA */}
               <a className="pbi-navCta" href="#access">
                 Get access
               </a>
@@ -383,6 +400,10 @@ useEffect(() => {
                       Run live demo
                     </a>
 
+                    <a className="pbi-btnGhost" href="/enterprise">
+                      Enterprise
+                    </a>
+
                     <button className="pbi-btnGhost" type="button" onClick={openSales}>
                       Talk to sales
                     </button>
@@ -396,6 +417,25 @@ useEffect(() => {
                       <span className="pbi-proofPill">Governance & multisig</span>
                       <span className="pbi-proofPill">Deploy & production changes</span>
                       <span className="pbi-proofPill">Legal / ownership actions</span>
+                    </div>
+                  </div>
+
+                  {/* Premium trust strip (new) */}
+                  <div className="pbi-card" style={{ marginTop: 14, background: "rgba(0,0,0,.18)" }}>
+                    <div className="pbi-proofLabel">Trust & operations</div>
+                    <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <a className="pbi-btnGhost" href="/trust">
+                        Trust Center →
+                      </a>
+                      <a className="pbi-btnGhost" href="/status">
+                        Status →
+                      </a>
+                      <a className="pbi-btnGhost" href="/changelog">
+                        Changelog →
+                      </a>
+                      <a className="pbi-btnGhost" href="/developers">
+                        Developer Hub →
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -449,6 +489,15 @@ POST /v1/pbi/verify     { assertion }
                     <FlowRow a="receiptHash" b="audit" />
                     <FlowRow a="packId" b="custody" />
                   </div>
+
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    <a className="pbi-btnGhost" href="/security" style={{ width: "100%", justifyContent: "center" }}>
+                      Security overview →
+                    </a>
+                    <a className="pbi-btnGhost" href="/enterprise" style={{ width: "100%", justifyContent: "center" }}>
+                      Enterprise onboarding →
+                    </a>
+                  </div>
                 </aside>
               </div>
             </section>
@@ -483,6 +532,17 @@ POST /v1/pbi/verify     { assertion }
                   bullets={["Use your real API key", "Custom action payload + actionHash", "Receipt hashes + portable proofs", "Requires portal account"]}
                   ctaLabel="Open tool"
                   ctaHref={TOOL_URL}
+                />
+
+                <PlanCard
+                  name="Developer Hub"
+                  price="Start"
+                  period=""
+                  tagline="Quickstart, patterns, canonicalization and enforcement guidance."
+                  bestFor="Best for: teams integrating PBI into real endpoints."
+                  bullets={["5-minute quickstart", "Action hashing guidance", "Enforcement patterns", "Links to reference docs"]}
+                  ctaLabel="Open developers"
+                  ctaHref="/developers"
                 />
 
                 <PlanCard
@@ -574,6 +634,12 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                   <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
                     Run demo →
                   </a>
+                  <a className="pbi-btnGhost" href="/customers">
+                    Customer use cases →
+                  </a>
+                  <a className="pbi-btnGhost" href="/enterprise">
+                    Enterprise onboarding →
+                  </a>
                   <a className="pbi-btnGhost" href="#access">
                     Get access →
                   </a>
@@ -652,6 +718,7 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                       "Priority processing",
                       "Overage billed per verification (shown in portal)"
                     ]}
+                    featured
                   />
 
                   <PlanCard
@@ -693,6 +760,9 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                 <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <a className="pbi-btnPrimary" href="#access">
                     Get Access →
+                  </a>
+                  <a className="pbi-btnGhost" href="/pricing">
+                    Full pricing →
                   </a>
                   <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
                     Run demo
@@ -742,8 +812,8 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                     What PBI guarantees (and what it doesn’t)
                   </div>
                   <div className="pbi-cardBody">
-                    PBI produces cryptographic proof of live human presence for a specific action. It does not attempt to identify who the user is,
-                    nor does it store biometric data.
+                    PBI produces cryptographic proof of live human presence for a specific action. It does not attempt to identify who the user is, nor
+                    does it store biometric data.
                   </div>
 
                   <div className="pbi-section" style={{ display: "grid", gap: 10 }}>
@@ -752,12 +822,35 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                     <ProofLine k="Portable evidence" v="Optional PBI Packs/Proofs allow offline verification with rotation/revocation/expiry." />
                     <ProofLine k="Operational model" v="challenge → verify → receipt; enforce only on PBI_VERIFIED." />
                   </div>
+
+                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a className="pbi-btnGhost" href="/trust">
+                      Trust Center →
+                    </a>
+                    <a className="pbi-btnGhost" href="/security">
+                      Security →
+                    </a>
+                    <a className="pbi-btnGhost" href="/status">
+                      Status →
+                    </a>
+                    <a className="pbi-btnGhost" href="/changelog">
+                      Changelog →
+                    </a>
+                  </div>
                 </div>
               </div>
 
               <footer className="pbi-footer">
                 <div>© {new Date().getFullYear()} Kojib · PBI</div>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {/* Premium footer links */}
+                  <a href="/developers">Developers</a>
+                  <a href="/customers">Customers</a>
+                  <a href="/enterprise">Enterprise</a>
+                  <a href="/trust">Trust</a>
+                  <a href="/status">Status</a>
+                  <a href="/changelog">Changelog</a>
+                  <a href="/security">Security</a>
                   <a href="/terms">Terms</a>
                   <a href="/privacy">Privacy</a>
                   <a href={API_DOCS} rel="noreferrer" target="_blank">
@@ -805,9 +898,9 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                       Use the inline scheduler below. Your intake form captures the details we need.
                     </div>
 
-<div className="pbi-calendlyWrap" style={{ marginTop: 12, height: calendlyHeight }}>
-  <div ref={calendlyHostRef} className="pbi-calendlyHost" />
-</div>
+                    <div className="pbi-calendlyWrap" style={{ marginTop: 12, height: calendlyHeight }}>
+                      <div ref={calendlyHostRef} className="pbi-calendlyHost" key={calendlyKey} />
+                    </div>
 
                     <div style={{ marginTop: 10 }}>
                       <button className="pbi-btnGhost" type="button" onClick={emailSalesNow} style={{ width: "100%", justifyContent: "center" }}>
@@ -874,6 +967,12 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                       </a>
                       <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
                         Demo
+                      </a>
+                      <a className="pbi-btnGhost" href="/trust">
+                        Trust Center
+                      </a>
+                      <a className="pbi-btnGhost" href="/status">
+                        Status
                       </a>
                     </div>
                   </div>

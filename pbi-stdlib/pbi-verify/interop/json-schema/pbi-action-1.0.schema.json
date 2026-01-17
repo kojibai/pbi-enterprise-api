@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbi.kojib.com/schemas/pbi-action-1.0.schema.json",
+  "title": "PBI Action (pbi-action-1.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ver", "aud", "purpose", "method", "path", "query", "params"],
+  "properties": {
+    "ver": { "const": "pbi-action-1.0" },
+    "aud": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "method": { "type": "string", "pattern": "^[A-Z]+$" },
+    "path": { "type": "string", "pattern": "^/" },
+    "query": { "type": "string" },
+    "params": { "type": "object" }
+  }
+}

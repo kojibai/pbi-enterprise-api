@@ -2,5 +2,11 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js"
+  "/trust": "pages/trust.js",
+  "/": "pages/index.js",
+  "/status": "pages/status.js",
+  "/security": "pages/security.js",
+  "/enterprise": "pages/enterprise.js",
+  "/changelog": "pages/changelog.js",
+  "/api/probe": "pages/api/probe.js"
 }
