@@ -1,3 +1,4 @@
+// pages/index.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -324,7 +325,7 @@ export default function HomePage() {
               <a href="#tools">Demo</a>
               <a href="#pricing">Pricing</a>
 
-              {/* Premium site pages (new) */}
+              {/* Premium site pages */}
               <a href="/developers">Developers</a>
               <a href="/customers">Customers</a>
               <a href="/trust">Trust</a>
@@ -376,7 +377,6 @@ export default function HomePage() {
                         />
                       </div>
                     </div>
-
                     <div className="pbi-heroVideoCaption">Presence-bound verification in under a minute.</div>
                   </div>
 
@@ -420,7 +420,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Premium trust strip (new) */}
+                  {/* Trust strip */}
                   <div className="pbi-card" style={{ marginTop: 14, background: "rgba(0,0,0,.18)" }}>
                     <div className="pbi-proofLabel">Trust & operations</div>
                     <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -681,8 +681,7 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                   <span style={{ opacity: 0.8 }}>A “verification” is one successful </span>
                   <span
                     style={{
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                       fontSize: 12
                     }}
                   >
@@ -840,48 +839,48 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                 </div>
               </div>
 
-<footer className="pbi-footer">
-  <div className="pbi-footerLeft">© {new Date().getFullYear()} Kojib · PBI</div>
+              {/* FOOTER (new) */}
+              <footer className="pbi-footer">
+                <div className="pbi-footerLeft">© {new Date().getFullYear()} Kojib · PBI</div>
 
-  <div className="pbi-footerGrid">
-    <div className="pbi-footerCol">
-      <div className="pbi-footerH">Product</div>
-      <a href="/why">Why</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-      <a href="/customers">Customers</a>
-    </div>
+                <div className="pbi-footerGrid">
+                  <div className="pbi-footerCol">
+                    <div className="pbi-footerH">Product</div>
+                    <a href="/why">Why</a>
+                    <a href="/pricing">Pricing</a>
+                    <a href="/enterprise">Enterprise</a>
+                    <a href="/customers">Customers</a>
+                  </div>
 
-    <div className="pbi-footerCol">
-      <div className="pbi-footerH">Developers</div>
-      <a href="/developers">Developer Hub</a>
-      <a href={API_DOCS} target="_blank" rel="noreferrer">
-        API Docs
-      </a>
-      <a href={TOOL_URL} target="_blank" rel="noreferrer">
-        Tool
-      </a>
-      <a href={DEMO_URL} target="_blank" rel="noreferrer">
-        Demo
-      </a>
-    </div>
+                  <div className="pbi-footerCol">
+                    <div className="pbi-footerH">Developers</div>
+                    <a href="/developers">Developer Hub</a>
+                    <a href={API_DOCS} target="_blank" rel="noreferrer">
+                      API Docs
+                    </a>
+                    <a href={TOOL_URL} target="_blank" rel="noreferrer">
+                      Tool
+                    </a>
+                    <a href={DEMO_URL} target="_blank" rel="noreferrer">
+                      Demo
+                    </a>
+                  </div>
 
-    <div className="pbi-footerCol">
-      <div className="pbi-footerH">Trust</div>
-      <a href="/trust">Trust Center</a>
-      <a href="/security">Security</a>
-      <a href="/status">Status</a>
-      <a href="/changelog">Changelog</a>
-    </div>
+                  <div className="pbi-footerCol">
+                    <div className="pbi-footerH">Trust</div>
+                    <a href="/trust">Trust Center</a>
+                    <a href="/security">Security</a>
+                    <a href="/status">Status</a>
+                    <a href="/changelog">Changelog</a>
+                  </div>
 
-    <div className="pbi-footerCol">
-      <div className="pbi-footerH">Legal</div>
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
-    </div>
-  </div>
-</footer>
-
+                  <div className="pbi-footerCol">
+                    <div className="pbi-footerH">Legal</div>
+                    <a href="/terms">Terms</a>
+                    <a href="/privacy">Privacy</a>
+                  </div>
+                </div>
+              </footer>
             </section>
           </main>
         </div>
@@ -958,7 +957,7 @@ pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
                           </div>
                           <div className="pbi-secItem">
                             <div className="pbi-secK">Trust policy</div>
-                            <div className="pbi-secV">Rotation + revocation + expiry windows (trust.json) for offline verification governance.</div>
+                            <div className="pbi-secV">Rotation + revocation + expiry windows for offline verification governance.</div>
                           </div>
                           <div className="pbi-secItem">
                             <div className="pbi-secK">Evidence bundling</div>

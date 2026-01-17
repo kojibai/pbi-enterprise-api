@@ -27,15 +27,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/security": [
+    "/changelog": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/security.js"
+      "static/chunks/pages/changelog.js"
     ],
-    "/status": [
+    "/customers": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/status.js"
+      "static/chunks/pages/customers.js"
     ],
     "/why": [
       "static/chunks/webpack.js",
