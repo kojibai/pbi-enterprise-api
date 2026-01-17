@@ -13,7 +13,7 @@ import { sha256Hex } from "../src/hash.js";
 import { parseAttestorTrustFile, verifyAttestorTrustAt, type AttestorTrustFile } from "../src/attestorTrust.js";
 
 type Manifest = Readonly<{
-  ver: "pbi-pack-2.0";
+  ver: "pbi-pack-2.0" | "pbi-attest-pack-2.0";
   createdAt: string;
   issuer: { name: string; aud: string };
   policy: { policyVer: string; policyHash: string; source: string };
@@ -132,7 +132,10 @@ function mustJsonObject(p: string): Record<string, unknown> {
 
 function mustManifest(p: string): Manifest {
   const u = mustJsonObject(p);
-  if (u["ver"] !== "pbi-pack-2.0") throw new Error("Invalid manifest version");
+  const ver = u["ver"];
+if (ver !== "pbi-pack-2.0" && ver !== "pbi-attest-pack-2.0") {
+  throw new Error("Invalid manifest version");
+}
   return u as Manifest;
 }
 
