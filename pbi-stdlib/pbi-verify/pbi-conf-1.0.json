@@ -1,7 +1,7 @@
 {
   "ver": "pbi-conf-1.0",
   "spec": "pbi-spec-1.0",
-  "createdAt": "2026-01-17T02:19:02.586Z",
+  "createdAt": "2026-01-17T03:30:08.868Z",
   "cases": [
     {
       "name": "valid_01",
@@ -23,23 +23,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -66,23 +66,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vZXZpbC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vZXZpbC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -110,23 +110,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -154,23 +154,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "U9NbGabMjxNR5stOsP7nUKHAPLXlszIKUzZEwL_6bjI",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "C9GAO4k-nf8Ui-dc12oRQzm_EvwxEtHKtrswdQ95p_Y",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -198,23 +198,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "nBgN4M1pnueIl8R8_bPn7h11kG4xt3RqR0fepTaQmDcFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -242,23 +242,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EBAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -286,23 +286,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA4"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknE"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {
@@ -330,23 +330,23 @@
       },
       "receipt": {
         "ver": "pbi-receipt-1.0",
-        "challengeId": "chal_GiBVuqkYZwE",
-        "challenge": "ymAt-UYuXawBaD29YVE7XYMpNP6K-fu8hQjwfvhwW2w",
+        "challengeId": "chal_K3cYCMH7Sp8",
+        "challenge": "53AKXbWuZiH0P7RUx5gCJwzkRpgTHKFIWdzK0rQ4SUQ",
         "actionHash": "016395e739e46ff9af71b1ece72e0fd004d6d46053f42aa1364a866c2a724ccb",
         "aud": "pbi.kojib.com",
         "purpose": "transfer",
         "authorSig": {
           "alg": "webauthn-es256",
-          "credId": "QE6-X1-8BLU6l7GF6jslLQ",
+          "credId": "kB9t6qaNI3cwK1GmymXKzg",
           "authenticatorData": "mykW0Ps_sfO7rr3yovxDZ2068OHEH_hpBUFq6Chn63EFAAAAAQ",
-          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieW1BdC1VWXVYYXdCYUQyOVlWRTdYWU1wTlA2Sy1mdThoUWp3ZnZod1cydyIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
-          "signature": "MEUCIQDj-ux18JCyLT7_huO9X95pxNDPayqlvJEOSDUovhH3fwIgJWW9YGLp8mVVDSSImWAli8tdo6Em4MB7Gn6xBShpFA8"
+          "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTNBS1hiV3VaaUgwUDdSVXg1Z0NKd3prUnBnVEhLRklXZHpLMHJRNFNVUSIsIm9yaWdpbiI6Imh0dHBzOi8vcGJpLmtvamliLmNvbSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+          "signature": "MEUCIQCO7Db4SnXoMHcb-2IcyS4LSOtvfB7nOcdhr-2nGg3RxwIgU9EOdWDAU2DmDv5s6bFtBacu8PnsIgb8LbE_lLGQknA"
         }
       },
       "pubKeyJwk": {
         "kty": "EC",
-        "x": "haxPEBSkxDKqa74QCA2oV3rR9nWS_k3uWRhWl0ktbTM",
-        "y": "VnSCkXeUc0K5hZmNcyb_qV5XBG3LO0zONMAKZXDq3DU",
+        "x": "h7LclKis3Fe_Dk1YtYR51jdDiELruX9SCEGcTGRwI_g",
+        "y": "8aAtgPUcCCpd5GOuLY5biyQ6iJHv9WkawmkzwVYQbA0",
         "crv": "P-256"
       },
       "expect": {

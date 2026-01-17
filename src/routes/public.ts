@@ -795,7 +795,33 @@ publicRouter.get("/docs/kojib-pillbar.js", (_req, res) => {
   res.type("application/javascript").send(`(function () {
   "use strict";
 
+  function ensureViewport() {
+    var head = document.head || document.getElementsByTagName("head")[0];
+    if (!head) return;
+
+    var meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "viewport");
+      head.appendChild(meta);
+    }
+
+    // The key: force device-width so iOS doesn't render at 980px and scale down.
+    meta.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+  }
+
+  function ensureTextAdjust() {
+    // Prevent iOS Safari from doing weird automatic text scaling on some pages.
+    try {
+      document.documentElement.style.webkitTextSizeAdjust = "100%";
+      document.documentElement.style.textSizeAdjust = "100%";
+    } catch (_) {}
+  }
+
   function mount() {
+    ensureViewport();
+    ensureTextAdjust();
+
     if (document.getElementById("kojib-pillbar")) return;
 
     var bar = document.createElement("div");
@@ -824,6 +850,7 @@ publicRouter.get("/docs/kojib-pillbar.js", (_req, res) => {
   }
 })();`);
 });
+
 
 // 2) Swagger UI route
 publicRouter.use("/docs", (req, res, next) => {
@@ -866,6 +893,10 @@ const setup = swaggerUi.setup(loaded.spec, {
 /* =========================
    GLOBAL DARK BASE
 ========================== */
+html{
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 html, body{
   background:
     radial-gradient(1200px 800px at 18% 10%, rgba(120,255,231,.10), transparent 55%),
@@ -1156,7 +1187,10 @@ body { padding-top: 78px !important; }
   border: 1px solid rgba(255,255,255,.12) !important;
   border-radius: 18px !important;
 }
-  
+  @media (max-width: 900px){
+  html, body { background-attachment: scroll !important; }
+}
+
 .swagger-ui .modal-ux * { color: rgba(255,255,255,.92) !important; }
 `
     });
