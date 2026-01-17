@@ -18,6 +18,7 @@ import { stripeRouter } from "./routes/stripe.js";
 import { pbiRouter } from "./routes/pbi.js";
 import { billingRouter } from "./routes/billing.js";
 import { adminRouter } from "./routes/admin.js";
+import path from "node:path";
 
 export function makeApp() {
   const app = express();
@@ -28,6 +29,8 @@ export function makeApp() {
 
   // Cookies for portal sessions
   app.use(cookieParser());
+
+app.use(express.static(path.join(process.cwd(), "public")));
 
   // Helmet + CSP (supports Redoc on mobile via blob workers)
   app.use(

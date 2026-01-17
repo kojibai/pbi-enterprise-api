@@ -2,12 +2,22 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { apiJson } from "../lib/api";
 
-const API_DOCS = "https://api.kojib.com/";
+// Prefer linking directly to docs (Redoc / Swagger) vs root.
+// If your docs live elsewhere, update this constant.
+const API_DOCS = "https://api.kojib.com/docs";
 const DEFAULT_CALENDLY = "https://calendly.com/kojibchat/one-on-one";
 
 // Public tools
 const DEMO_URL = "https://demo.kojib.com";
 const TOOL_URL = "https://tool.kojib.com";
+
+declare global {
+  interface Window {
+    Calendly?: {
+      initInlineWidget?: (opts: { url: string; parentElement: HTMLElement }) => void;
+    };
+  }
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -79,7 +89,7 @@ export default function HomePage() {
   const [salesOpen, setSalesOpen] = useState<boolean>(false);
   const [securityOpen, setSecurityOpen] = useState<boolean>(false);
 
-  // IMPORTANT: used to force Calendly to remount every time modal opens
+  // Used to force Calendly to remount every time modal opens
   const [calendlyKey, setCalendlyKey] = useState<number>(0);
 
   const salesPanelRef = useRef<HTMLDivElement | null>(null);
@@ -114,7 +124,7 @@ export default function HomePage() {
     document.body.appendChild(s);
   }, [salesOpen]);
 
-  // ALWAYS re-initialize Calendly widget on open (and on every remount)
+  // Re-initialize Calendly widget on open (and every remount) — single init path (no double-mount)
   useEffect(() => {
     if (!salesOpen) return;
 
@@ -128,27 +138,29 @@ export default function HomePage() {
 
       host.innerHTML = "";
 
+      // Preferred: initInlineWidget when available
+      const init = window.Calendly?.initInlineWidget;
+      if (typeof init === "function") {
+        try {
+          init({ url: calendlyEmbedUrl, parentElement: host });
+          return;
+        } catch {
+          // fall through to attribute-based embed
+        }
+      }
+
+      // Fallback: attribute-based embed (Calendly script will hydrate it when ready)
       const widget = document.createElement("div");
       widget.className = "calendly-inline-widget";
       widget.setAttribute("data-url", calendlyEmbedUrl);
       widget.style.minWidth = "320px";
       widget.style.height = "700px";
       host.appendChild(widget);
-
-      const w = window as any;
-      if (w.Calendly && typeof w.Calendly.initInlineWidget === "function") {
-        try {
-          w.Calendly.initInlineWidget({
-            url: calendlyEmbedUrl,
-            parentElement: widget
-          });
-        } catch {
-          // no-op
-        }
-      }
     }
 
     mountCalendly();
+
+    // Re-try a few times in case script loads slightly later
     const timers: number[] = [];
     timers.push(window.setTimeout(mountCalendly, 120));
     timers.push(window.setTimeout(mountCalendly, 350));
@@ -222,7 +234,7 @@ export default function HomePage() {
             <a href="#how" rel="noreferrer">
               How it works
             </a>
-            <a href={API_DOCS} rel="noreferrer">
+            <a href={API_DOCS} rel="noreferrer" target="_blank">
               API
             </a>
             <a href="#tools">Demo</a>
@@ -240,7 +252,7 @@ export default function HomePage() {
               <div>
                 <div className="pbi-pill">
                   <span className="pbi-pillDot" />
-                  Presence verification for irreversible actions
+                  Presence verification for irreversible actions · exportable evidence
                 </div>
 
                 <h1 className="pbi-h1">
@@ -249,7 +261,8 @@ export default function HomePage() {
 
                 <p className="pbi-lead">
                   PBI is a drop-in presence layer for high-risk systems. Bind a WebAuthn challenge to an <b>action hash</b>, require a live{" "}
-                  <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> you can audit forever.
+                  <b>UP+UV ceremony</b> (FaceID / TouchID), and receive a <b>signed, non-replayable receipt</b> — plus optional{" "}
+                  <b>portable proof bundles</b> for offline audit and chain-of-custody.
                 </p>
 
                 {/* HERO VIDEO */}
@@ -272,8 +285,8 @@ export default function HomePage() {
                 <div className="pbi-valueGrid">
                   <ValueLine title="Action-bound proof" body="Receipts bind presence to the exact operation you intended to perform." />
                   <ValueLine title="Non-replayable by design" body="Single-use challenges stop replays, scripts, and delegated approvals." />
-                  <ValueLine title="No identity database" body="PBI verifies presence without storing users, passwords, or biometrics." />
-                  <ValueLine title="Audit & dispute ready" body="Cryptographic receipts are verifiable long after logs are gone." />
+                  <ValueLine title="Portable evidence" body="Export PBI Packs/Proofs for offline verification, audits, and disputes." />
+                  <ValueLine title="No identity database" body="Verify presence without storing users, passwords, or biometrics." />
                 </div>
 
                 <div className="pbi-ctaRow">
@@ -281,7 +294,7 @@ export default function HomePage() {
                     Get access <span aria-hidden>→</span>
                   </a>
 
-                  <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                  <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer" target="_blank">
                     Read API docs
                   </a>
 
@@ -311,7 +324,7 @@ export default function HomePage() {
                 <div className="pbi-sideTop">
                   <div>
                     <div className="pbi-proofLabel">What you get back</div>
-                    <div className="pbi-sideTitle">A receipt that proves:</div>
+                    <div className="pbi-sideTitle">A proof bundle that shows:</div>
                   </div>
                   <div className="pbi-sideTag">cryptographic · auditable</div>
                 </div>
@@ -329,7 +342,7 @@ export default function HomePage() {
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
-                    <span>within expiry, single-use (non-replayable)</span>
+                    <span>single-use, within expiry (non-replayable)</span>
                   </div>
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
@@ -338,19 +351,22 @@ export default function HomePage() {
                   <div className="pbi-bullet">
                     <span className="pbi-bulletDot">•</span>
                     <span>
-                      no biometric data stored, <b>no identity database</b>
+                      optional offline verification with <b>trust policy</b> (rotate/revoke/expire)
                     </span>
                   </div>
                 </div>
 
                 <pre className="pbi-code">{`POST /v1/pbi/challenge  { actionHash }
 POST /v1/pbi/verify     { assertion }
-→ receiptId + receiptHashHex`}</pre>
+→ receiptHash
+→ packId + merkleRoot
+→ proofs/<id>.proof.json (portable)`}</pre>
 
                 <div className="pbi-section">
                   <FlowRow a="actionHash" b="challenge" />
                   <FlowRow a="UP+UV" b="verify" />
                   <FlowRow a="receiptHash" b="audit" />
+                  <FlowRow a="packId" b="custody" />
                 </div>
               </aside>
             </div>
@@ -361,7 +377,7 @@ POST /v1/pbi/verify     { assertion }
             <SectionHead
               kicker="Proof in under a minute"
               title="Run the live presence ceremony"
-              body="Want to see it work instantly? The demo runs the full flow end-to-end with no keys. The tool is for integration testing (BYOK) and is linked from the client portal."
+              body="The demo shows the full ceremony end-to-end. The tool is an integration harness (BYOK) for real API keys, real action hashes, and receipt/proof debugging."
             />
 
             <div className="pbi-sectionGrid3">
@@ -391,7 +407,7 @@ POST /v1/pbi/verify     { assertion }
                 bullets={[
                   "Use your real API key",
                   "Custom action payload + actionHash",
-                  "Debug logs + receipts",
+                  "Receipt hashes + portable proofs",
                   "Requires portal account"
                 ]}
                 ctaLabel="Open tool"
@@ -404,7 +420,12 @@ POST /v1/pbi/verify     { assertion }
                 period=""
                 tagline="Exact endpoints, payloads, and response semantics."
                 bestFor="Best for: implementation + security review."
-                bullets={["/v1/pbi/challenge", "/v1/pbi/verify", "Auth: Bearer API key", "Receipt verification model"]}
+                bullets={[
+                  "/v1/pbi/challenge",
+                  "/v1/pbi/verify",
+                  "Auth: Bearer API key",
+                  "Receipt + pack/proof model"
+                ]}
                 ctaLabel="Open docs"
                 ctaHref={API_DOCS}
               />
@@ -416,7 +437,7 @@ POST /v1/pbi/verify     { assertion }
             <SectionHead
               kicker="Why PBI exists"
               title="From account trust → human presence proof"
-              body="Passwords, sessions, and tokens prove only that something authenticated. PBI proves a human was physically present and authorized the exact action you care about."
+              body="Passwords, sessions, and tokens prove only that something authenticated. PBI proves a human was physically present and authorized the exact action you care about — then exports a proof you can verify later."
             />
 
             <FigureCard
@@ -445,6 +466,16 @@ POST /v1/pbi/verify     { assertion }
               <InfoCard title="2) Prove presence (UP+UV)" body="User completes a live WebAuthn ceremony. No accounts required for the proof." />
               <InfoCard title="3) Enforce + store receipt" body="Proceed only on PBI_VERIFIED. Store receipt hash for audit, forensics, disputes." />
             </div>
+
+            <div className="pbi-card" style={{ marginTop: 14 }}>
+              <div className="pbi-cardTitle">Offline verification (optional)</div>
+              <div className="pbi-cardBody">
+                For audits and custody chains, PBI can export a signed pack/proof that verifies offline under a trust policy (rotation/revocation/expiry).
+              </div>
+
+              <pre className="pbi-code" style={{ marginTop: 10 }}>{`pbi-pack-verify ../pbi-pack --trust ./trust.json
+pbi-pack-verify --proof proofs/0001.proof.json --trust ./trust.json`}</pre>
+            </div>
           </section>
 
           {/* USE CASES */}
@@ -471,7 +502,7 @@ POST /v1/pbi/verify     { assertion }
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer" target="_blank">
                   View endpoints →
                 </a>
                 <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
@@ -513,7 +544,14 @@ POST /v1/pbi/verify     { assertion }
           <section className="pbi-section" id="pricing">
             <div className="pbi-card">
               <div className="pbi-cardTitle">Pricing</div>
-              <div className="pbi-cardBody">Choose your verification capacity. Usage is metered automatically; receipts are always audit-ready.</div>
+              <div className="pbi-cardBody">
+                Choose your verification capacity. Usage is metered automatically.
+                <span style={{ opacity: 0.8 }}> A “verification” is one successful </span>
+                <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace", fontSize: 12 }}>
+                  /v1/pbi/verify
+                </span>
+                <span style={{ opacity: 0.8 }}> returning PBI_VERIFIED.</span>
+              </div>
 
               <div className="pbi-sectionGrid3" style={{ marginTop: 12 }}>
                 <PlanCard
@@ -526,7 +564,7 @@ POST /v1/pbi/verify     { assertion }
                     "Presence verification core",
                     `Includes ${fmtInt(PLAN_QUOTA.starter)} verifications/mo`,
                     "Receipt hash + audit trail",
-                    "Client portal + billing"
+                    "Overage billed per verification (shown in portal)"
                   ]}
                 />
 
@@ -540,7 +578,7 @@ POST /v1/pbi/verify     { assertion }
                     "Everything in Starter",
                     `Includes ${fmtInt(PLAN_QUOTA.pro)} verifications/mo`,
                     "Priority processing",
-                    "Built for scaling teams"
+                    "Overage billed per verification (shown in portal)"
                   ]}
                 />
 
@@ -555,8 +593,8 @@ POST /v1/pbi/verify     { assertion }
                     "Everything in Pro",
                     `Includes ${fmtInt(PLAN_QUOTA.scale)} verifications/mo`,
                     "Enterprise throughput + reliability",
-                    "Designed for irreversible operations",
-                    "Dispute & compliance ready"
+                    "Portable proofs for audit workflows",
+                    "Overage billed per verification (shown in portal)"
                   ]}
                 />
 
@@ -564,15 +602,15 @@ POST /v1/pbi/verify     { assertion }
                   name="Enterprise (PBI Assured)"
                   price="Talk to Sales"
                   period=""
-                  tagline="Procurement-ready. Higher limits, governance support, and enterprise guarantees."
+                  tagline="Procurement-ready. Governance support and enterprise guarantees."
                   bestFor="Best for: banks, governments, platforms, custodians, and mission-critical control planes."
                   bullets={[
                     "Paid pilot available (1 endpoint, 2 weeks)",
                     "Custom verification capacity + burst",
                     "SLA / priority support options",
                     "Security review packet on request",
-                    "Receipts + retention strategy for audits",
-                    "Roadmap alignment for regulated environments"
+                    "Trust policy + key rotation guidance",
+                    "Audit export & evidence bundling"
                   ]}
                   ctaLabel="Schedule a call"
                   ctaOnClick={openSales}
@@ -587,7 +625,7 @@ POST /v1/pbi/verify     { assertion }
                 <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
                   Run demo
                 </a>
-                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer" target="_blank">
                   Read API docs
                 </a>
               </div>
@@ -639,7 +677,7 @@ POST /v1/pbi/verify     { assertion }
                 <div className="pbi-section" style={{ display: "grid", gap: 10 }}>
                   <ProofLine k="Guarantee" v="UP+UV ceremony occurred for this action hash, single-use, within expiry." />
                   <ProofLine k="Does not do" v="Identity resolution, KYC, biometric storage, or user databases." />
-                  <ProofLine k="Composable with" v="SSO/OAuth/JWT, RBAC/ABAC, SIEM, policy engines, existing audit tooling." />
+                  <ProofLine k="Portable evidence" v="Optional PBI Packs/Proofs allow offline verification with rotation/revocation/expiry." />
                   <ProofLine k="Operational model" v="challenge → verify → receipt; enforce only on PBI_VERIFIED." />
                 </div>
               </div>
@@ -650,7 +688,7 @@ POST /v1/pbi/verify     { assertion }
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <a href="/terms">Terms</a>
                 <a href="/privacy">Privacy</a>
-                <a href={API_DOCS} rel="noreferrer">
+                <a href={API_DOCS} rel="noreferrer" target="_blank">
                   API Docs
                 </a>
                 <a href={DEMO_URL} target="_blank" rel="noreferrer">
@@ -725,20 +763,20 @@ POST /v1/pbi/verify     { assertion }
                     {securityOpen ? (
                       <div className="pbi-secPackBody">
                         <div className="pbi-secItem">
-                          <div className="pbi-secK">Controls posture</div>
-                          <div className="pbi-secV">Control mappings and what evidence we can provide today (and what we do not claim).</div>
+                          <div className="pbi-secK">Threat model</div>
+                          <div className="pbi-secV">Replay resistance, ceremony guarantees, and expected failure modes.</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Data flow diagram</div>
                           <div className="pbi-secV">What is sent, what is stored (receipts/metadata), and what is explicitly not stored.</div>
                         </div>
                         <div className="pbi-secItem">
-                          <div className="pbi-secK">Receipt retention</div>
-                          <div className="pbi-secV">Retention options, export strategy, and guidance for regulated audit windows.</div>
+                          <div className="pbi-secK">Trust policy</div>
+                          <div className="pbi-secV">Rotation + revocation + expiry windows (trust.json) for offline verification governance.</div>
                         </div>
                         <div className="pbi-secItem">
-                          <div className="pbi-secK">Threat model</div>
-                          <div className="pbi-secV">Replay resistance, ceremony guarantees, and expected failure modes.</div>
+                          <div className="pbi-secK">Evidence bundling</div>
+                          <div className="pbi-secV">PBI Pack + PBI Proof exports for compliance, legal, and air-gapped review.</div>
                         </div>
                         <div className="pbi-secItem">
                           <div className="pbi-secK">Deployment notes</div>
@@ -759,7 +797,7 @@ POST /v1/pbi/verify     { assertion }
                   </div>
 
                   <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer">
+                    <a className="pbi-btnGhost" href={API_DOCS} rel="noreferrer" target="_blank">
                       Review API docs
                     </a>
                     <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
@@ -967,7 +1005,7 @@ function PlanCard({
             className={featured ? "pbi-btnPrimary" : "pbi-btnGhost"}
             href={ctaHref}
             rel="noreferrer"
-            target={ctaHref?.startsWith("http") ? "_blank" : undefined}
+            target={ctaHref.startsWith("http") ? "_blank" : undefined}
             style={{ width: "100%", justifyContent: "center" }}
           >
             {ctaLabel || "Schedule a call"}
