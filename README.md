@@ -72,6 +72,9 @@ Customers are API-key holders. There are **no end-user accounts** in the core mo
   Verify a WebAuthn UP+UV ceremony for the bound challenge and return a decision.  
   **Applications MUST only proceed when decision == `PBI_VERIFIED`.**
 
+- `GET /v1/pbi/receipts`  
+  List receipts with challenge metadata for audit/export workflows.
+
 ---
 
 ## Billing endpoints
