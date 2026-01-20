@@ -265,7 +265,7 @@ export default function RolloutGuidePage() {
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <a className="pbi-btnPrimary" href={SDK_PAGE_URL}>
-                        Open SDK page <span aria-hidden>→</span>
+                        Open SDK <span aria-hidden>→</span>
                       </a>
                       <button className="pbi-btnGhost" type="button" onClick={() => void copy(SDK_INSTALL, "sdk:install")}>
                         {copied === "sdk:install" ? "Copied" : "Copy install"}

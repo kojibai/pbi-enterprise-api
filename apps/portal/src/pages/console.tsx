@@ -249,7 +249,7 @@ export default function Home() {
             </a>
 
             <a className="navLink" href={ROLLOUT_URL}>
-              Rollout Guide
+              Guide
             </a>
 
             <a className="navLink" href={SDK_PAGE_URL}>
@@ -393,7 +393,7 @@ export default function Home() {
 
                     <div className="sdkActions">
                       <a className="btnPrimary" href={SDK_PAGE_URL}>
-                        SDK page →
+                        SDK →
                       </a>
                       <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                         npm →
@@ -631,7 +631,7 @@ export default function Home() {
               <a href="/billing">Billing</a>
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
-              <a href={ROLLOUT_URL}>Rollout guide</a>
+              <a href={ROLLOUT_URL}>Guide</a>
               <a href={SDK_PAGE_URL}>SDK</a>
               <a href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                 npm

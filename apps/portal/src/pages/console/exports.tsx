@@ -534,7 +534,7 @@ export default function ExportsPage() {
               <a href="/console">Dashboard</a>
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
-              <a href={ROLLOUT_URL}>Rollout guide</a>
+              <a href={ROLLOUT_URL}>Guide</a>
               <a href="/privacy">Privacy</a>
               <a href="/terms">Terms</a>
             </div>
