@@ -43,6 +43,21 @@ export default function ChangelogPage() {
   // Newest first (enterprise expectation)
   const entries: ChangelogEntry[] = [
     {
+      version: "v1.6.0",
+      title: "Console IA upgrade: dedicated Webhooks + Exports modules (clean hub + task pages)",
+      dateISO: "2026-01-21",
+      tags: ["Portal", "Enterprise UX", "Compliance"],
+      bullets: [
+        "Console refactored into a clean control-plane hub (plan/quota/usage/keys + navigation) to reduce cognitive load for enterprise users.",
+        "New dedicated console module pages for enterprise workflows:",
+        "• /console/webhooks — configure receipt.created delivery (create/rotate/delete with secrets shown once).",
+        "• /console/exports — generate signed evidence export packs with presets + advanced filters and offline verification guidance.",
+        "Navigation updated to treat Webhooks and Exports as first-class destinations (separate from the homepage).",
+        "No API key exposure: exports remain cookie-auth via /v1/portal/receipts/export.",
+        "Backward compatible: no changes required for existing API integrations."
+      ]
+    },
+    {
       version: "v1.5.0",
       title: "Enterprise onboarding + CORS resilience (rollout guide, console links, origin normalization)",
       dateISO: "2026-01-21",

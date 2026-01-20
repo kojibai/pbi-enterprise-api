@@ -1,7 +1,9 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+// src/util/zip.ts
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { createWriteStream } from "node:fs";
+import archiver from "archiver";
 
 export type ZipInputFile = {
   name: string;
@@ -11,7 +13,7 @@ export type ZipInputFile = {
 function safeEntryName(name: string): string {
   const trimmed = name.trim();
 
-  // Disallow any path traversal or separators.
+  // Disallow traversal or separators.
   if (
     trimmed.length === 0 ||
     trimmed.includes("..") ||
@@ -30,31 +32,23 @@ export async function createZipFromFiles(
 ): Promise<{ zipPath: string; cleanup: () => Promise<void> }> {
   const baseDir = await mkdtemp(path.join(tmpdir(), "pbi-export-"));
   const zipPath = path.join(baseDir, "export.zip");
-  const filePaths: string[] = [];
 
   try {
-    for (const file of files) {
-      const entry = safeEntryName(file.name);
-      const filePath = path.join(baseDir, entry);
-      await writeFile(filePath, file.bytes);
-      filePaths.push(filePath);
-    }
-
     await new Promise<void>((resolve, reject) => {
-      const proc = spawn("zip", ["-q", "-j", zipPath, ...filePaths], { stdio: "ignore" });
+      const output = createWriteStream(zipPath);
+      const archive = archiver("zip", { zlib: { level: 9 } });
 
-      proc.on("error", (err) => {
-        const msg =
-          typeof err === "object" && err !== null && "code" in err && (err as { code?: unknown }).code === "ENOENT"
-            ? "zip_binary_missing"
-            : "zip_spawn_failed";
-        reject(new Error(msg));
-      });
+      output.on("close", () => resolve());
+      output.on("error", (err) => reject(err));
 
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`zip_failed:${code ?? "unknown"}`));
-      });
+      archive.on("error", (err) => reject(err));
+      archive.pipe(output);
+
+      for (const f of files) {
+        archive.append(f.bytes, { name: safeEntryName(f.name) });
+      }
+
+      void archive.finalize();
     });
 
     return {
@@ -64,7 +58,6 @@ export async function createZipFromFiles(
       }
     };
   } catch (err) {
-    // If zip building fails, clean up temp dir immediately.
     try {
       await rm(baseDir, { recursive: true, force: true });
     } catch {

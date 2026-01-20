@@ -1,6 +1,6 @@
 // pages/console.tsx
 import { useEffect, useMemo, useState } from "react";
-import { apiJson } from "../lib/api";
+import { apiJson } from "../../lib/api";
 
 type Me = { customer: { id: string; email: string; plan: string; quotaPerMonth: string } };
 
