@@ -105,35 +105,6 @@ components:
           required: [id, purpose, actionHashHex]
       required: [ok, decision]
 
-    UsageResponse:
-      type: object
-      properties:
-        month: { type: string, example: "2026-01" }
-        usage:
-          type: object
-          properties:
-            challenge: { type: string, example: "123" }
-            verify: { type: string, example: "120" }
-          required: [challenge, verify]
-      required: [month, usage]
-
-    InvoicesResponse:
-      type: object
-      properties:
-        invoices:
-          type: array
-          items:
-            type: object
-            properties:
-              id: { type: string, format: uuid }
-              month: { type: string }
-              status: { type: string, enum: [open, final, paid] }
-              totalCents: { type: string }
-              lineItems: { type: object }
-              createdAt: { type: string, format: date-time }
-              finalizedAt: { type: string, format: date-time, nullable: true }
-            required: [id, month, status, totalCents, lineItems, createdAt]
-      required: [invoices]
 
     Receipt:
       type: object
@@ -234,33 +205,3 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
-
-  /v1/billing/usage:
-    get:
-      summary: Usage for current or requested month
-      parameters:
-        - in: query
-          name: month
-          required: false
-          schema:
-            type: string
-            pattern: "^[0-9]{4}-[0-9]{2}$"
-      responses:
-        "200":
-          description: Usage
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/UsageResponse" }
-
-  /v1/billing/invoices:
-    get:
-      summary: List recent invoices
-      responses:
-        "200":
-          description: Invoices
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/InvoicesResponse" }
-
-
-              
