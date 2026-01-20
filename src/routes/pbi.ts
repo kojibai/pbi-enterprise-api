@@ -521,6 +521,7 @@ pbiRouter.get(
 
 pbiRouter.get(
   "/receipts/:id",
+  requireScope("pbi.read_receipts"),
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
@@ -619,6 +620,7 @@ pbiRouter.post(
 
 pbiRouter.get(
   "/receipts",
+  requireScope("pbi.read_receipts"),
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
