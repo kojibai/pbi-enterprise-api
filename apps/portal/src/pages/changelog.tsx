@@ -45,7 +45,7 @@ export default function ChangelogPage() {
     {
       version: "v1.2.0",
       title: "Enterprise WOW pack: webhook delivery, export packs, and key governance",
-      dateISO: "2026-02-01",
+      dateISO: "2026-01-20",
       bullets: [
         "Receipts listing upgraded with time windows, explicit ordering, opaque cursors, and higher limits (max 500).",
         "New export endpoint: GET /v1/pbi/receipts/export generates a signed, offline-verifiable zip pack (manifest + hashes + signatures).",
@@ -58,7 +58,7 @@ export default function ChangelogPage() {
     {
       version: "v1.1.0",
       title: "Audit-friendly receipts listing + richer receipt context",
-      dateISO: "2026-01-19",
+      dateISO: "2026-01-18",
       bullets: [
         "New endpoint: GET /v1/pbi/receipts — customer-facing receipts listing designed for audit/export workflows.",
         "Cursor-based pagination added for receipt listings (nextCursor).",
