@@ -170,6 +170,7 @@ GET  /v1/pbi/challenges/&lt;challengeId&gt;
 GET  /v1/pbi/challenges/&lt;challengeId&gt;/receipt
 GET  /v1/pbi/receipts/&lt;receiptId&gt;
 POST /v1/pbi/receipts/verify
+GET  /v1/pbi/receipts
 GET  /v1/billing/usage
 GET  /v1/billing/invoices</div>
         </div>
