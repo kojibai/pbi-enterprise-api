@@ -77,6 +77,63 @@ Customers are API-key holders. There are **no end-user accounts** in the core mo
 
 ---
 
+## Plug-and-play SDK
+This repo includes a lightweight, Stripe-checkout-style SDK wrapper under `src/sdk/`. It focuses on two goals:
+1) **One-liner receipt intents** (build action hash + create challenge).
+2) **Drop-in verification plugin** for Express apps.
+
+### Install / import
+```ts
+import { PbiReceiptsClient, createReceiptGuard } from "./src/sdk/index.js";
+```
+
+### Create a receipt intent (hash + challenge)
+```ts
+const client = new PbiReceiptsClient({ apiKey: process.env.PBI_API_KEY! });
+
+const intent = await client.createReceiptIntent({
+  purpose: "ACTION_COMMIT",
+  payload: {
+    orderId: "order_123",
+    amount: "12500",
+    currency: "USD",
+    customerId: "cus_789"
+  }
+});
+
+// Send intent.challengeB64Url to the browser for WebAuthn assertion.
+```
+
+### Verify + mint receipt (server-side)
+```ts
+const result = await client.verifyChallenge({
+  challengeId: intent.id,
+  assertion: {
+    authenticatorDataB64Url,
+    clientDataJSONB64Url,
+    signatureB64Url,
+    credIdB64Url,
+    pubKeyPem
+  }
+});
+
+if (result.ok && result.decision === "PBI_VERIFIED") {
+  // result.receiptHashHex is your audit-grade receipt
+}
+```
+
+### Drop-in Express receipt guard (plugin)
+```ts
+const guard = createReceiptGuard(client);
+
+app.post("/api/fulfill", guard, (req, res) => {
+  // req.pbiReceipt is populated on success
+  res.json({ ok: true });
+});
+```
+
+---
+
 ## Billing endpoints
 - `GET /v1/billing/usage`
 - `GET /v1/billing/invoices`
