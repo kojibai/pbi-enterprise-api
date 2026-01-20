@@ -65,10 +65,14 @@ const ReceiptIdParam = z.string().uuid();
 const CursorParam = z
   .string()
   .regex(/^.+\|[0-9a-f-]{36}$/i, "cursor must be <ISO8601>|<uuid>")
-  .transform((value): { createdAt: Date; id: string } => {
+  .superRefine((value, ctx) => {
     const sep = value.indexOf("|");
     if (sep <= 0 || sep >= value.length - 1) {
-      throw new Error("cursor must be <ISO8601>|<uuid>");
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor must be <ISO8601>|<uuid>"
+      });
+      return;
     }
 
     const rawDate = value.slice(0, sep);
@@ -76,15 +80,25 @@ const CursorParam = z
 
     const createdAt = new Date(rawDate);
     if (Number.isNaN(createdAt.getTime())) {
-      throw new Error("cursor timestamp invalid");
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor timestamp invalid"
+      });
     }
 
-    // Optional: enforce UUID strictly via zod
     const uuidOk = z.string().uuid().safeParse(rawId);
     if (!uuidOk.success) {
-      throw new Error("cursor id invalid");
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor id invalid"
+      });
     }
-
+  })
+  .transform((value): { createdAt: Date; id: string } => {
+    const sep = value.indexOf("|");
+    const rawDate = sep > -1 ? value.slice(0, sep) : "";
+    const rawId = sep > -1 ? value.slice(sep + 1) : "";
+    const createdAt = new Date(rawDate);
     return { createdAt, id: rawId };
   });
 
