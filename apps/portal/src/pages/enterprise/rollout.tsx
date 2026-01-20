@@ -15,6 +15,7 @@ const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
 const SDK_EXAMPLE_URL =
   "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
 const SDK_DEV_URL = "/developers";
+const SDK_PAGE_URL = "/sdk";
 
 type AuthState = "unknown" | "logged_out" | "logged_in";
 
@@ -209,7 +210,7 @@ export default function RolloutGuidePage() {
                     <a className="pbi-btnGhost" href={SDK_DEV_URL}>
                       Developers
                     </a>
-                    <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                    <a className="pbi-btnGhost" href={SDK_PAGE_URL}>
                       SDK
                     </a>
                     <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
@@ -246,34 +247,37 @@ export default function RolloutGuidePage() {
               </div>
             </section>
 
-            {/* NEW: Developer fast path (SDK) */}
+            {/* Developer fast path (SDK) */}
             <section className="pbi-section">
               <SectionHead
                 kicker="Developer fast path"
-                title="Ship integration quickly with the official SDK"
-                body="For most teams, the fastest route to production is: SDK install → create challenge → WebAuthn ceremony → verify → persist receiptId."
+                title="Use the SDK page as the canonical integration entry point"
+                body="The SDK page consolidates installation, compatibility, error semantics, and the end-to-end ceremony example."
               />
 
               <div style={{ display: "grid", gap: 10 }}>
                 <div className="pbi-card" style={{ padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                     <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
-                      Install + minimal client
+                      SDK quickstart (copy/paste)
                       <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,.58)" }}>Node 18+ · ESM + CJS</span>
                     </div>
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <a className="pbi-btnPrimary" href={SDK_PAGE_URL}>
+                        Open SDK page <span aria-hidden>→</span>
+                      </a>
                       <button className="pbi-btnGhost" type="button" onClick={() => void copy(SDK_INSTALL, "sdk:install")}>
                         {copied === "sdk:install" ? "Copied" : "Copy install"}
                       </button>
                       <button className="pbi-btnGhost" type="button" onClick={() => void copy(sdkSnippet, "sdk:snippet")}>
                         {copied === "sdk:snippet" ? "Copied" : "Copy snippet"}
                       </button>
-                      <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-                        npm →
-                      </a>
                       <a className="pbi-btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
                         Example →
+                      </a>
+                      <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                        npm →
                       </a>
                     </div>
                   </div>
@@ -283,40 +287,19 @@ export default function RolloutGuidePage() {
 {SDK_INSTALL}
                     </pre>
 
-                    <pre className="pbi-code" style={{ margin: 0, maxHeight: 320, overflow: "auto" }}>
+                    <pre className="pbi-code" style={{ margin: 0, maxHeight: 260, overflow: "auto" }}>
 {sdkSnippet}
                     </pre>
 
                     <div className="pbi-cardBody" style={{ marginTop: 2 }}>
-                      Use <code className="pbi-inlineCode">PRESENCEBOUND_API_KEY</code> in your environment. Persist{" "}
-                      <code className="pbi-inlineCode">receiptId</code> on the protected action record, and enforce the decision gate:{" "}
-                      <code className="pbi-inlineCode">PBI_VERIFIED</code> only.
+                      Canonical entry point: <a href={SDK_PAGE_URL}>/sdk</a>. Use npm only for distribution; keep docs and guidance centralized on the SDK page.
                     </div>
-                  </div>
-                </div>
-
-                <div className="pbi-card" style={{ padding: 14 }}>
-                  <div className="pbi-cardTitle">End-to-end ceremony example</div>
-                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
-                    The repo includes a complete working demo (Express server + browser page) that performs WebAuthn assertion and verifies via PBI.
-                  </div>
-                  <pre className="pbi-code" style={{ marginTop: 10 }}>{`Path:
-./packages/presencebound-sdk/examples/node-sdk/`}</pre>
-                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <a className="pbi-btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
-                      Open example →
-                    </a>
-                    <a className="pbi-btnGhost" href={SDK_DEV_URL}>
-                      Developers →
-                    </a>
-                    <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
-                      API docs →
-                    </a>
                   </div>
                 </div>
               </div>
             </section>
 
+            {/* Day-by-day rollout */}
             <section className="pbi-section">
               <SectionHead
                 kicker="Implementation sequence"
@@ -356,6 +339,7 @@ export default function RolloutGuidePage() {
               </div>
             </section>
 
+            {/* Enterprise integration notes */}
             <section className="pbi-section">
               <SectionHead
                 kicker="Enterprise integration notes"
@@ -434,6 +418,7 @@ GET /v1/pbi/receipts/export`}</pre>
               </div>
             </section>
 
+            {/* Governance */}
             <section className="pbi-section">
               <SectionHead
                 kicker="Security & governance"
@@ -475,7 +460,9 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
         <a href="/developers">Developers</a>
         <a href="/customers">Customers</a>
         <a href="/pricing">Pricing</a>
-        <a href="/enterprise">Enterprise</a>
+        <a href="/enterprise" aria-current="page">
+          Enterprise
+        </a>
         <a href="/trust">Trust</a>
         <a href={API_DOCS} target="_blank" rel="noreferrer">
           API

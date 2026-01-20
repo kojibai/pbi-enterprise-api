@@ -9,6 +9,12 @@ const DEMO_URL = "https://demo.kojib.com";
 const TOOL_URL = "https://tool.kojib.com";
 const SITE_URL = "https://pbi.kojib.com";
 
+const SDK_PACKAGE = "presencebound-sdk";
+const SDK_PAGE_URL = "/sdk";
+const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
+const SDK_EXAMPLE_URL =
+  "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
+
 type AuthState = "unknown" | "logged_out" | "logged_in";
 
 export default function DevelopersPage() {
@@ -85,6 +91,12 @@ export default function DevelopersPage() {
                     <a className="pbi-btnPrimary" href={auth === "logged_in" ? "/console" : "/#access"}>
                       {auth === "logged_in" ? "Open Dashboard" : "Get access"} <span aria-hidden>→</span>
                     </a>
+                    <a className="pbi-btnGhost" href={SDK_PAGE_URL}>
+                      SDK
+                    </a>
+                    <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      npm
+                    </a>
                     <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
                       API reference
                     </a>
@@ -102,6 +114,32 @@ export default function DevelopersPage() {
                     <ValueLine title="Replay resistance" body="Single-use + expiry make replays fail by construction." />
                     <ValueLine title="Receipts" body="Store receiptHash as your durable evidence reference." />
                   </div>
+
+                  {/* NEW: SDK callout (seamless, official) */}
+                  <div className="pbi-card" style={{ marginTop: 14, padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                      <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
+                        Official SDK: <span style={{ opacity: 0.92 }}>{SDK_PACKAGE}</span>
+                        <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,.58)" }}>Node 18+ · ESM + CJS</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <a className="pbi-btnPrimary" href={SDK_PAGE_URL}>
+                          Open SDK page <span aria-hidden>→</span>
+                        </a>
+                        <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                          npm →
+                        </a>
+                        <a className="pbi-btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                          Example →
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                      Recommended path for most teams: use the SDK for typed integration, consistent error semantics, and receipts pagination. The SDK page
+                      includes install, quickstart, error handling, compatibility, and an end-to-end WebAuthn ceremony example.
+                    </div>
+                  </div>
                 </div>
 
                 <aside className="pbi-side">
@@ -117,8 +155,10 @@ export default function DevelopersPage() {
 POST /v1/pbi/challenge
 POST /v1/pbi/verify
 
-Billing unit:
-count(verify.decision == PBI_VERIFIED)`}</pre>
+Fast path:
+- install SDK
+- challenge -> WebAuthn -> verify
+- store receiptHashHex`}</pre>
                 </aside>
               </div>
             </section>
@@ -127,7 +167,7 @@ count(verify.decision == PBI_VERIFIED)`}</pre>
               <SectionHead
                 kicker="Quickstart"
                 title="5 minutes to first verification"
-                body="Use the tool for integration testing, or wire directly into your endpoint. The only requirement is strict enforcement on VERIFIED."
+                body="Use the SDK for the fastest path, or wire directly into your endpoint. The only requirement is strict enforcement on VERIFIED."
               />
 
               <div className="pbi-card">
@@ -268,13 +308,15 @@ assert("v1=" + expected === headers["X-PBI-Signature"])`}</pre>
             </section>
 
             <section className="pbi-section">
-              <SectionHead
-                kicker="Next"
-                title="Go deeper"
-                body="For full payload schemas and response semantics, use the API reference."
-              />
+              <SectionHead kicker="Next" title="Go deeper" body="For the most complete integration path, use the SDK page or the API reference." />
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <a className="pbi-btnPrimary" href={API_DOCS} target="_blank" rel="noreferrer">
+                <a className="pbi-btnPrimary" href={SDK_PAGE_URL}>
+                  SDK page →
+                </a>
+                <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                  npm →
+                </a>
+                <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
                   API reference →
                 </a>
                 <a className="pbi-btnGhost" href="/security">
@@ -312,7 +354,9 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
 
       <nav className="pbi-nav" aria-label="Primary">
         <a href="/why">Why</a>
-        <a href="/developers">Developers</a>
+        <a href="/developers" aria-current="page">
+          Developers
+        </a>
         <a href="/customers">Customers</a>
         <a href="/pricing">Pricing</a>
         <a href="/enterprise">Enterprise</a>
@@ -321,6 +365,7 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
           API
         </a>
         <a href="/status">Status</a>
+        <a href={SDK_PAGE_URL}>SDK</a>
         {auth === "logged_in" ? (
           <a className="pbi-navCta" href="/console">
             Dashboard

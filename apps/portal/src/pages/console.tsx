@@ -31,11 +31,8 @@ const WEBHOOKS_URL = "/console/webhooks";
 const EXPORTS_URL = "/console/exports";
 
 const SDK_PACKAGE = "presencebound-sdk";
-const SDK_INSTALL = `npm i ${SDK_PACKAGE}`;
 const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
-const SDK_EXAMPLE_URL =
-  "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
-const SDK_DEV_URL = "/developers";
+const SDK_PAGE_URL = "/sdk";
 
 function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
   const s = String(raw ?? "").toLowerCase().trim();
@@ -60,39 +57,6 @@ function latestMonthKey(rows: UsageRow[]): string | null {
   if (!ks.length) return null;
   ks.sort();
   return ks[ks.length - 1] ?? null;
-}
-
-function buildSdkSnippet(baseUrl: string): string {
-  return `import { PresenceBound, PresenceBoundError } from "${SDK_PACKAGE}";
-
-const client = new PresenceBound({
-  apiKey: process.env.PRESENCEBOUND_API_KEY ?? "",
-  baseUrl: "${baseUrl}",
-  timeoutMs: 15000,
-  userAgent: "your-app/1.0.0"
-});
-
-async function run() {
-  const challenge = await client.createChallenge({
-    actionHashHex: "a".repeat(64),
-    purpose: "ACTION_COMMIT"
-  });
-
-  console.log("challengeId:", challenge.data.id, "requestId:", challenge.requestId);
-
-  // Auto-pagination
-  for await (const item of client.iterateReceipts({ limit: 100, order: "desc" })) {
-    console.log(item.receipt.id, item.receipt.decision);
-  }
-}
-
-run().catch((err) => {
-  if (err instanceof PresenceBoundError) {
-    console.error({ status: err.status, requestId: err.requestId, details: err.details });
-    process.exit(1);
-  }
-  throw err;
-});`;
 }
 
 function EmailText({ email }: { email: string }) {
@@ -132,10 +96,6 @@ export default function Home() {
     }),
     []
   );
-
-  const effectiveBaseUrl = useMemo(() => "https://api.kojib.com", []);
-
-  const sdkSnippet = useMemo(() => buildSdkSnippet(effectiveBaseUrl), [effectiveBaseUrl]);
 
   async function load(): Promise<void> {
     const m = await apiJson<Me>("/v1/portal/me");
@@ -292,12 +252,12 @@ export default function Home() {
               Rollout Guide
             </a>
 
-            <a className="navLink" href={SDK_DEV_URL}>
-              Developers
+            <a className="navLink" href={SDK_PAGE_URL}>
+              SDK
             </a>
 
             <a className="navLink" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-              SDK
+              npm
             </a>
 
             <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
@@ -420,58 +380,29 @@ export default function Home() {
                   </div>
                 ) : null}
 
-                {/* NEW: Developer quickstart (SDK) */}
-                <div className="devBox" role="region" aria-label="Developer quickstart">
-                  <div className="devTop">
+                {/* NEW: SDK callout (links only) */}
+                <div className="sdkCard" role="region" aria-label="SDK">
+                  <div className="sdkTop">
                     <div>
-                      <div className="devKicker">Developers</div>
-                      <div className="devTitle">Official SDK quickstart</div>
-                      <div className="devSub">
-                        Node 18+ · ESM + CJS · typed errors with requestId correlation · receipts iterator.
+                      <div className="sdkKicker">Developers</div>
+                      <div className="sdkTitle">Official SDK</div>
+                      <div className="sdkSub">
+                        Install, quickstart, errors, compatibility, and the end-to-end ceremony example.
                       </div>
                     </div>
 
-                    <div className="devActions">
-                      <button className="btnGhost" onClick={() => copy(SDK_INSTALL, "install")} type="button">
-                        {copied === "install" ? "Copied" : "Copy install"}
-                      </button>
-                      <button className="btnGhost" onClick={() => copy(sdkSnippet, "snippet")} type="button">
-                        {copied === "snippet" ? "Copied" : "Copy snippet"}
-                      </button>
+                    <div className="sdkActions">
+                      <a className="btnPrimary" href={SDK_PAGE_URL}>
+                        SDK page →
+                      </a>
                       <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                         npm →
                       </a>
-                      <a className="btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
-                        Example →
-                      </a>
                     </div>
                   </div>
 
-                  <div className="devGrid">
-                    <div className="devPane">
-                      <div className="devPaneTitle">Install</div>
-                      <pre className="devCode">{SDK_INSTALL}</pre>
-                      <div className="devHint">
-                        Configure <code className="inlineCode">PRESENCEBOUND_API_KEY</code> in your environment.
-                      </div>
-                    </div>
-
-                    <div className="devPane devPaneWide">
-                      <div className="devPaneTitle">Minimal client</div>
-                      <pre className="devCode devCodeTall">{sdkSnippet}</pre>
-                    </div>
-                  </div>
-
-                  <div className="devFoot">
-                    Need a full ceremony demo? Open the end-to-end WebAuthn example:{" "}
-                    <a href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
-                      node-sdk
-                    </a>
-                    . Prefer docs-first? See{" "}
-                    <a href={SDK_DEV_URL} target="_blank" rel="noreferrer">
-                      /developers
-                    </a>
-                    .
+                  <div className="sdkFoot">
+                    Recommended for most teams: use the SDK for typed integration and consistent error semantics.
                   </div>
                 </div>
 
@@ -489,12 +420,12 @@ export default function Home() {
                   <div className="mobileCard">
                     <div className="kicker">Developers</div>
                     <div className="mobileTitle">Official SDK</div>
-                    <div className="hint">Install + quickstart + typed errors.</div>
-                    <a className="linkBtnPrimary" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-                      npm →
+                    <div className="hint">Docs + examples + install.</div>
+                    <a className="linkBtnPrimary" href={SDK_PAGE_URL}>
+                      SDK →
                     </a>
-                    <a className="linkBtn" href={SDK_DEV_URL}>
-                      Docs →
+                    <a className="linkBtn" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      npm →
                     </a>
                   </div>
 
@@ -676,8 +607,11 @@ export default function Home() {
                     <a className="btnGhost" href={ROLLOUT_URL}>
                       Rollout guide →
                     </a>
-                    <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                    <a className="btnGhost" href={SDK_PAGE_URL}>
                       SDK →
+                    </a>
+                    <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      npm →
                     </a>
                   </div>
 
@@ -698,8 +632,9 @@ export default function Home() {
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
               <a href={ROLLOUT_URL}>Rollout guide</a>
+              <a href={SDK_PAGE_URL}>SDK</a>
               <a href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-                SDK
+                npm
               </a>
             </div>
           </footer>
@@ -1039,8 +974,8 @@ body{ margin:0; overflow-x:hidden; }
   background: rgba(255,255,255,.06);
 }
 
-/* NEW: Developer SDK block */
-.devBox{
+/* NEW: SDK link card */
+.sdkCard{
   margin-top: 12px;
   border-radius: 22px;
   border: 1px solid rgba(154,170,255,.22);
@@ -1050,18 +985,18 @@ body{ margin:0; overflow-x:hidden; }
   position: relative;
   overflow:hidden;
 }
-.devBox::before{
+.sdkCard::before{
   content:"";
   position:absolute;
   inset:-2px;
   background:
-    radial-gradient(780px 220px at 12% 0%, rgba(154,170,255,.22), transparent 60%),
-    radial-gradient(680px 260px at 86% 10%, rgba(120,255,231,.14), transparent 62%);
+    radial-gradient(760px 240px at 12% 0%, rgba(154,170,255,.22), transparent 60%),
+    radial-gradient(680px 260px at 86% 10%, rgba(120,255,231,.12), transparent 62%);
   filter: blur(16px);
   opacity: .80;
   pointer-events:none;
 }
-.devTop{
+.sdkTop{
   position:relative;
   display:flex;
   align-items:flex-start;
@@ -1069,55 +1004,16 @@ body{ margin:0; overflow-x:hidden; }
   gap: 12px;
   flex-wrap: wrap;
 }
-.devKicker{ font-size: 11px; color: rgba(255,255,255,.56); }
-.devTitle{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
-.devSub{ margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.74); line-height: 1.5; max-width: 62ch; }
-.devActions{ display:flex; gap: 8px; flex-wrap: wrap; align-items:center; }
-.devGrid{
-  position:relative;
-  margin-top: 10px;
-  display:grid;
-  grid-template-columns: 1fr 1.8fr;
-  gap: 10px;
-}
-.devPane{
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.20);
-  padding: 10px;
-  min-width:0;
-}
-.devPaneWide{ grid-column: 2 / 3; }
-.devPaneTitle{ font-weight: 950; font-size: 12px; color: rgba(255,255,255,.84); }
-.devCode{
-  margin-top: 8px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(0,0,0,.26);
-  padding: 10px;
-  overflow:auto;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.55;
-  color: rgba(255,255,255,.92);
-  max-width: 100%;
-}
-.devCodeTall{ max-height: 260px; }
-.devHint{ margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.74); line-height: 1.5; }
-.devFoot{
+.sdkKicker{ font-size: 11px; color: rgba(255,255,255,.56); }
+.sdkTitle{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
+.sdkSub{ margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.74); line-height: 1.5; max-width: 64ch; }
+.sdkActions{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
+.sdkFoot{
   position:relative;
   margin-top: 10px;
   font-size: 12px;
   color: rgba(255,255,255,.74);
   line-height: 1.55;
-}
-.devFoot a{ color: rgba(120,255,231,.92); text-decoration:none; font-weight: 900; }
-.devFoot a:hover{ text-decoration: underline; }
-
-@media (max-width: 980px){
-  .devGrid{ grid-template-columns: 1fr; }
-  .devPaneWide{ grid-column: auto; }
-  .devCodeTall{ max-height: 220px; }
 }
 
 /* Desktop aside */
