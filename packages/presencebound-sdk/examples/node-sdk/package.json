@@ -1,0 +1,14 @@
+{
+  "name": "pbi-node-sdk-example",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "End-to-end example: browser WebAuthn + Express server + PresenceBound SDK",
+  "scripts": {
+    "dev": "node server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "presencebound-sdk": "^1.0.1"
+  }
+}

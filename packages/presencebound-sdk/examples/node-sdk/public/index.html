@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PBI Node SDK Example</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }
+      .card { max-width: 880px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; padding: 16px; }
+      pre { background: rgba(0,0,0,.06); padding: 12px; border-radius: 10px; overflow: auto; }
+      button { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0,0,0,.2); cursor: pointer; }
+      input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,.2); width: 100%; }
+      .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+      .muted { color: rgba(0,0,0,.65); font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>PBI End-to-End Demo</h2>
+      <p class="muted">
+        This demo creates a PBI challenge on the server, performs a WebAuthn assertion in the browser,
+        and verifies via the PresenceBound SDK.
+      </p>
+
+      <div class="row">
+        <label>
+          Action message (hashed server-side)
+          <input id="msg" value="approve wire: $10,000 to ACME (demo)" />
+        </label>
+
+        <button id="run">1) Create challenge + 2) WebAuthn verify</button>
+
+        <div>
+          <h3>Output</h3>
+          <pre id="out">{}</pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function toBase64Url(bytes) {
+        let binary = "";
+        const arr = new Uint8Array(bytes);
+        for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+        const b64 = btoa(binary);
+        return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+
+      function fromBase64Url(s) {
+        const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
+        const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + pad;
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+      }
+
+      function jsonOut(obj) {
+        document.getElementById("out").textContent = JSON.stringify(obj, null, 2);
+      }
+
+      async function postJson(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        const text = await res.text();
+        try { return JSON.parse(text); } catch { return { ok: false, raw: text }; }
+      }
+
+      document.getElementById("run").addEventListener("click", async () => {
+        try {
+          jsonOut({ step: "creating challenge..." });
+          const message = document.getElementById("msg").value;
+
+          const ch = await postJson("/api/challenge", { message });
+          if (!ch.ok) return jsonOut(ch);
+
+          jsonOut({ step: "challenge created", ...ch });
+
+          // PBI provides a server-generated challengeB64Url.
+          // WebAuthn expects challenge as bytes.
+          const challengeBytes = fromBase64Url(ch.challengeB64Url);
+
+          // NOTE:
+          // In a production integration you should use your own RP ID / allowCredentials,
+          // but for demo we let the browser pick eligible credentials on this origin.
+          const assertion = await navigator.credentials.get({
+            publicKey: {
+              challenge: challengeBytes,
+              timeout: 60000,
+              userVerification: "required"
+            }
+          });
+
+          if (!assertion) return jsonOut({ ok: false, error: "No assertion returned" });
+
+          const resp = assertion.response;
+
+          const payload = {
+            challengeId: ch.challengeId,
+            assertion: {
+              authenticatorDataB64Url: toBase64Url(resp.authenticatorData),
+              clientDataJSONB64Url: toBase64Url(resp.clientDataJSON),
+              signatureB64Url: toBase64Url(resp.signature),
+              credIdB64Url: toBase64Url(assertion.rawId),
+              // For this demo we do NOT have pubKeyPem client-side.
+              // Your PBI verifier accepts pubKeyPem in the bundle; most integrations provide it from stored credential registration.
+              // If your API requires pubKeyPem, wire it from your credential store and pass it here.
+              pubKeyPem: ""
+            }
+          };
+
+          jsonOut({ step: "verifying...", challengeId: payload.challengeId });
+
+          const v = await postJson("/api/verify", payload);
+          jsonOut(v);
+        } catch (e) {
+          jsonOut({ ok: false, error: String(e) });
+        }
+      });
+    </script>
+  </body>
+</html>
