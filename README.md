@@ -80,7 +80,6 @@ Customers are API-key holders. There are **no end-user accounts** in the core mo
 ## Billing endpoints
 - `GET /v1/billing/usage`
 - `GET /v1/billing/invoices`
-- `POST /v1/admin/close-month` (operator-only)
 
 ---
 
