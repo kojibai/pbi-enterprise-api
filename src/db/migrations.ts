@@ -202,4 +202,57 @@ export async function runMigrations(): Promise<void> {
       throw e;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Patch 3: webhook tables + receipt/query indexes + api key governance
+  // ---------------------------------------------------------------------------
+  const patchId3 = "2026-02-01_webhooks_and_governance";
+  if (!(await alreadyApplied(patchId3))) {
+    await pool.query(`
+      ALTER TABLE api_keys
+        ADD COLUMN IF NOT EXISTS scopes TEXT[] NULL,
+        ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS last_used_ip TEXT NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_receipts_key_created ON pbi_receipts(api_key_id, created_at, id);
+      CREATE INDEX IF NOT EXISTS idx_receipts_key_decision_created ON pbi_receipts(api_key_id, decision, created_at, id);
+      CREATE INDEX IF NOT EXISTS idx_challenges_key_action_created ON pbi_challenges(api_key_id, action_hash_hex, created_at, id);
+
+      CREATE TABLE IF NOT EXISTS webhook_endpoints (
+        id UUID PRIMARY KEY,
+        api_key_id UUID NOT NULL REFERENCES api_keys(id),
+        url TEXT NOT NULL,
+        events TEXT[] NOT NULL,
+        secret_hash TEXT NOT NULL,
+        secret_ciphertext TEXT NOT NULL,
+        secret_iv TEXT NOT NULL,
+        secret_tag TEXT NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_key ON webhook_endpoints(api_key_id);
+
+      CREATE TABLE IF NOT EXISTS webhook_deliveries (
+        id UUID PRIMARY KEY,
+        endpoint_id UUID NOT NULL REFERENCES webhook_endpoints(id),
+        event TEXT NOT NULL,
+        receipt_id UUID NOT NULL,
+        payload_json JSONB NOT NULL,
+        attempts INT NOT NULL DEFAULT 0,
+        next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_error TEXT NULL,
+        status TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_next_attempt ON webhook_deliveries(next_attempt_at);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status ON webhook_deliveries(status);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries(endpoint_id);
+    `);
+
+    await markApplied(patchId3);
+  }
 }

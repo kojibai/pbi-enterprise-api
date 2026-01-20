@@ -1,12 +1,23 @@
 import type { RequestHandler, Response } from "express";
 import { Router } from "express";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import type { AuthedRequest } from "../middleware/apiKeyAuth.js";
 import { createChallenge, getChallenge, markChallengeUsed } from "../pbi/challengeStore.js";
 import { verifyWebAuthnAssertion } from "../pbi/verify.js";
 import { getReceiptByChallengeId, getReceiptById, mintReceipt, storeReceipt } from "../pbi/receipt.js";
 import { pool } from "../db/pool.js";
 import { consumeQuotaUnit } from "../billing/quota.js";
+import { buildEvidenceMetadata, withEvidenceMetadata } from "../pbi/evidence.js";
+import { decodeReceiptCursor, encodeReceiptCursor } from "../pbi/receiptCursor.js";
+import { buildReceiptQuery } from "../pbi/receiptQuery.js";
+import { enqueueReceiptCreated } from "../webhooks/queue.js";
+import { requireScope } from "../middleware/requireScope.js";
+import { buildExportPack } from "../pbi/exportPack.js";
+import { config } from "../config.js";
+import fs from "node:fs";
+import { logger } from "../util/logger.js";
+import { createZipFromFiles } from "../util/zip.js";
 
 export const pbiRouter = Router();
 
@@ -62,50 +73,30 @@ const VerifyReq = z.object({
   })
 });
 const ReceiptIdParam = z.string().uuid();
-const CursorParam = z
+const CursorParam = z.string().min(1).transform((value, ctx) => {
+  const decoded = decodeReceiptCursor(value);
+  if (!decoded) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "cursor must be base64url encoded JSON with {createdAt, id}"
+    });
+    return z.NEVER;
+  }
+  return decoded;
+});
+
+const IsoDateParam = z
   .string()
-  .regex(/^.+\|[0-9a-f-]{36}$/i, "cursor must be <ISO8601>|<uuid>")
-  .superRefine((value, ctx) => {
-    const sep = value.indexOf("|");
-    if (sep <= 0 || sep >= value.length - 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "cursor must be <ISO8601>|<uuid>"
-      });
-      return;
-    }
-
-    const rawDate = value.slice(0, sep);
-    const rawId = value.slice(sep + 1);
-
-    const createdAt = new Date(rawDate);
-    if (Number.isNaN(createdAt.getTime())) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "cursor timestamp invalid"
-      });
-    }
-
-    const uuidOk = z.string().uuid().safeParse(rawId);
-    if (!uuidOk.success) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "cursor id invalid"
-      });
-    }
-  })
-  .transform((value): { createdAt: Date; id: string } => {
-    const sep = value.indexOf("|");
-    const rawDate = sep > -1 ? value.slice(0, sep) : "";
-    const rawId = sep > -1 ? value.slice(sep + 1) : "";
-    const createdAt = new Date(rawDate);
-    return { createdAt, id: rawId };
-  });
+  .datetime()
+  .transform((value) => new Date(value));
 
 
 const ReceiptListQuery = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
   cursor: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), CursorParam).optional(),
+  createdAfter: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), IsoDateParam).optional(),
+  createdBefore: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), IsoDateParam).optional(),
+  order: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), z.enum(["asc", "desc"]).default("desc")),
   actionHashHex: z
     .string()
     .regex(/^[0-9a-f]{64}$/i, "actionHashHex must be 64 hex chars")
@@ -116,10 +107,15 @@ const ReceiptListQuery = z.object({
   decision: z.enum(["PBI_VERIFIED", "FAILED", "EXPIRED", "REPLAYED"]).optional()
 });
 
+const ReceiptExportQuery = ReceiptListQuery.extend({
+  limit: z.coerce.number().int().min(1).max(10000)
+}).omit({ cursor: true });
+
 pbiRouter.post(
   "/challenge",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const parsed = ChallengeReq.safeParse(req.body);
 
     if (!parsed.success) {
@@ -148,6 +144,8 @@ pbiRouter.post(
     }
 
     const ch = await createChallenge(apiKey.id, purpose, body.actionHashHex, ttlSeconds);
+    const evidence = buildEvidenceMetadata({ traceId });
+    const challengePayload = withEvidenceMetadata(ch, evidence);
 
     // Keep response backward-friendly:
     // - Tool/demo often expect id + challengeB64Url at top level
@@ -159,7 +157,7 @@ pbiRouter.post(
       purpose: ch.purpose,
       actionHashHex: ch.actionHashHex,
 
-      challenge: ch,
+      challenge: challengePayload,
       metering: { month: q.monthKey, used: q.usedAfter.toString(), quota: q.quota.toString() }
     });
   })
@@ -169,6 +167,7 @@ pbiRouter.post(
   "/verify",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const parsed = VerifyReq.safeParse(req.body);
 
     if (!parsed.success) {
@@ -205,6 +204,11 @@ pbiRouter.post(
       assertion: body.assertion
     });
 
+    const verifier =
+      typeof v.up === "boolean" && typeof v.uv === "boolean"
+        ? { method: "webauthn", up: v.up, uv: v.uv }
+        : undefined;
+
     if (!v.ok) {
       res.status(400).json({ ok: false, decision: "FAILED", reason: v.reason });
       return;
@@ -232,12 +236,52 @@ pbiRouter.post(
     const receipt = mintReceipt(stored.id, "PBI_VERIFIED");
     await storeReceipt(apiKey.id, stored.id, "PBI_VERIFIED", receipt);
 
+    const createdAtIso = new Date().toISOString();
+    const evidence = buildEvidenceMetadata({ traceId, verifier });
+
+    const receiptPayload = withEvidenceMetadata(
+      {
+        id: receipt.receiptId,
+        challengeId: stored.id,
+        receiptHashHex: receipt.receiptHashHex,
+        decision: "PBI_VERIFIED",
+        createdAt: createdAtIso
+      },
+      evidence
+    );
+
+    const challengePayload = withEvidenceMetadata(
+      {
+        id: stored.id,
+        purpose: stored.purpose,
+        actionHashHex: stored.actionHashHex,
+        expiresAtIso: stored.expiresAt.toISOString(),
+        usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null
+      },
+      evidence
+    );
+
+    try {
+      const eventPayload = {
+        id: randomUUID(),
+        type: "receipt.created" as const,
+        createdAt: createdAtIso,
+        data: { receipt: receiptPayload, challenge: challengePayload }
+      };
+      await enqueueReceiptCreated(apiKey.id, receipt.receiptId, eventPayload);
+    } catch (e) {
+      logger.error({ err: e }, "webhook_enqueue_failed");
+    }
+
     res.json({
       ok: true,
       decision: "PBI_VERIFIED",
       receiptId: receipt.receiptId,
       receiptHashHex: receipt.receiptHashHex,
-      challenge: { id: stored.id, purpose: stored.purpose, actionHashHex: stored.actionHashHex },
+      challenge: withEvidenceMetadata(
+        { id: stored.id, purpose: stored.purpose, actionHashHex: stored.actionHashHex },
+        evidence
+      ),
       metering: { month: q.monthKey, used: q.usedAfter.toString(), quota: q.quota.toString() }
     });
   })
@@ -247,6 +291,7 @@ pbiRouter.get(
   "/challenges/:id",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const challengeId = String(req.params.id ?? "").trim();
 
     if (!challengeId) {
@@ -263,15 +308,19 @@ pbiRouter.get(
     const now = new Date();
     const status = stored.usedAt ? "used" : now > stored.expiresAt ? "expired" : "active";
 
+    const evidence = buildEvidenceMetadata({ traceId });
     res.json({
-      challenge: {
-        id: stored.id,
-        purpose: stored.purpose,
-        actionHashHex: stored.actionHashHex,
-        expiresAtIso: stored.expiresAt.toISOString(),
-        usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null,
-        status
-      }
+      challenge: withEvidenceMetadata(
+        {
+          id: stored.id,
+          purpose: stored.purpose,
+          actionHashHex: stored.actionHashHex,
+          expiresAtIso: stored.expiresAt.toISOString(),
+          usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null,
+          status
+        },
+        evidence
+      )
     });
   })
 );
@@ -280,6 +329,7 @@ pbiRouter.get(
   "/challenges/:id/receipt",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const challengeId = String(req.params.id ?? "").trim();
 
     if (!challengeId) {
@@ -294,25 +344,163 @@ pbiRouter.get(
     }
 
     const challenge = await getChallenge(challengeId);
+    const evidence = buildEvidenceMetadata({ traceId });
     const challengePayload = challenge
-      ? {
-          id: challenge.id,
-          purpose: challenge.purpose,
-          actionHashHex: challenge.actionHashHex,
-          expiresAtIso: challenge.expiresAt.toISOString(),
-          usedAtIso: challenge.usedAt ? challenge.usedAt.toISOString() : null
-        }
+      ? withEvidenceMetadata(
+          {
+            id: challenge.id,
+            purpose: challenge.purpose,
+            actionHashHex: challenge.actionHashHex,
+            expiresAtIso: challenge.expiresAt.toISOString(),
+            usedAtIso: challenge.usedAt ? challenge.usedAt.toISOString() : null
+          },
+          evidence
+        )
       : null;
 
     res.json({
-      receipt: {
-        id: receipt.id,
-        challengeId: receipt.challengeId,
-        receiptHashHex: receipt.receiptHashHex,
-        decision: receipt.decision,
-        createdAt: receipt.createdAt
-      },
+      receipt: withEvidenceMetadata(
+        {
+          id: receipt.id,
+          challengeId: receipt.challengeId,
+          receiptHashHex: receipt.receiptHashHex,
+          decision: receipt.decision,
+          createdAt: receipt.createdAt
+        },
+        evidence
+      ),
       challenge: challengePayload
+    });
+  })
+);
+
+pbiRouter.get(
+  "/receipts/export",
+  requireScope("pbi.export"),
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
+    const parsed = ReceiptExportQuery.safeParse(req.query ?? {});
+
+    if (parsed && !parsed.success) {
+      res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
+      return;
+    }
+
+    const params = parsed.data;
+    const limit = params.limit;
+    const order = params.order;
+
+    if (limit > 2000 && (!params.createdAfter || !params.createdBefore)) {
+      res.status(400).json({
+        error: "time_window_required",
+        message: "createdAfter and createdBefore are required for exports over 2000 receipts"
+      });
+      return;
+    }
+
+    if (!config.exportSigningPrivateKeyPem) {
+      res.status(500).json({ error: "signing_not_configured" });
+      return;
+    }
+
+    const { text, values } = buildReceiptQuery({
+      apiKeyId: apiKey.id,
+      limit,
+      order,
+      actionHashHex: params.actionHashHex,
+      challengeId: params.challengeId,
+      purpose: params.purpose,
+      decision: params.decision,
+      createdAfter: params.createdAfter,
+      createdBefore: params.createdBefore
+    });
+
+    const rows = await pool.query(text, values);
+    const evidence = buildEvidenceMetadata({ traceId });
+
+    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
+      const challengeRowId = row.challenge_row_id as string | null;
+      const challenge =
+        challengeRowId !== null
+          ? withEvidenceMetadata(
+              {
+                id: String(row.challenge_id),
+                purpose: String(row.purpose),
+                actionHashHex: String(row.action_hash_hex),
+                expiresAtIso: new Date(row.expires_at as string).toISOString(),
+                usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
+              },
+              evidence
+            )
+          : null;
+
+      return {
+        receipt: withEvidenceMetadata(
+          {
+            id: String(row.id),
+            challengeId: String(row.challenge_id),
+            receiptHashHex: String(row.receipt_hash_hex),
+            decision: String(row.decision),
+            createdAt: new Date(row.created_at as string).toISOString()
+          },
+          evidence
+        ),
+        challenge
+      };
+    });
+
+    let trustSnapshot: Record<string, unknown> | undefined;
+    if (config.trustSnapshotPath && fs.existsSync(config.trustSnapshotPath)) {
+      const raw = fs.readFileSync(config.trustSnapshotPath, "utf8");
+      const parsedTrust = JSON.parse(raw) as Record<string, unknown>;
+      trustSnapshot = parsedTrust;
+    }
+
+    const policySnapshot: Record<string, unknown> = {
+      policyVer: config.policyVersion ?? null,
+      policyHash: config.policyHash ?? null,
+      generatedAt: new Date().toISOString()
+    };
+
+    const filters: Record<string, unknown> = {
+      limit,
+      order,
+      createdAfter: params.createdAfter ? params.createdAfter.toISOString() : null,
+      createdBefore: params.createdBefore ? params.createdBefore.toISOString() : null,
+      actionHashHex: params.actionHashHex ?? null,
+      challengeId: params.challengeId ?? null,
+      purpose: params.purpose ?? null,
+      decision: params.decision ?? null
+    };
+
+    const pack = buildExportPack({
+      receipts,
+      filters,
+      policySnapshot,
+      trustSnapshot,
+      signingKey: {
+        privateKeyPem: config.exportSigningPrivateKeyPem,
+        publicKeyPem: config.exportSigningPublicKeyPem
+      }
+    });
+
+    const zipFiles = [
+      ...pack.files.map((file) => ({ name: file.name, bytes: file.bytes })),
+      { name: "manifest.json", bytes: Buffer.from(JSON.stringify(pack.manifest, null, 2) + "\n", "utf8") },
+      { name: "manifest.sig.json", bytes: Buffer.from(JSON.stringify(pack.signature, null, 2) + "\n", "utf8") }
+    ];
+
+    const { zipPath, cleanup } = await createZipFromFiles(zipFiles);
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", 'attachment; filename="pbi-receipts-export.zip"');
+
+    res.download(zipPath, "pbi-receipts-export.zip", async (err) => {
+      await cleanup();
+      if (err) {
+        logger.error({ err }, "export_zip_send_failed");
+      }
     });
   })
 );
@@ -321,6 +509,7 @@ pbiRouter.get(
   "/receipts/:id",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const receiptId = String(req.params.id ?? "").trim();
 
     const parsedReceiptId = ReceiptIdParam.safeParse(receiptId);
@@ -343,24 +532,31 @@ pbiRouter.get(
       [receipt.challengeId, apiKey.id]
     );
 
+    const evidence = buildEvidenceMetadata({ traceId });
     const challenge = challengeRow.rowCount
-      ? {
-          id: receipt.challengeId,
-          purpose: challengeRow.rows[0]?.purpose as string,
-          actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
-          expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
-          usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
-        }
+      ? withEvidenceMetadata(
+          {
+            id: receipt.challengeId,
+            purpose: challengeRow.rows[0]?.purpose as string,
+            actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
+            expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
+            usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
+          },
+          evidence
+        )
       : null;
 
     res.json({
-      receipt: {
-        id: receipt.id,
-        challengeId: receipt.challengeId,
-        receiptHashHex: receipt.receiptHashHex,
-        decision: receipt.decision,
-        createdAt: receipt.createdAt
-      },
+      receipt: withEvidenceMetadata(
+        {
+          id: receipt.id,
+          challengeId: receipt.challengeId,
+          receiptHashHex: receipt.receiptHashHex,
+          decision: receipt.decision,
+          createdAt: receipt.createdAt
+        },
+        evidence
+      ),
       challenge
     });
   })
@@ -370,6 +566,7 @@ pbiRouter.post(
   "/receipts/verify",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const Body = z.object({
       receiptId: z.string().uuid(),
       receiptHashHex: z.string().min(1)
@@ -390,14 +587,18 @@ pbiRouter.post(
 
     const ok = receipt.receiptHashHex === receiptHashHex;
 
+    const evidence = buildEvidenceMetadata({ traceId });
     res.json({
       ok,
-      receipt: {
-        id: receipt.id,
-        challengeId: receipt.challengeId,
-        decision: receipt.decision,
-        createdAt: receipt.createdAt
-      }
+      receipt: withEvidenceMetadata(
+        {
+          id: receipt.id,
+          challengeId: receipt.challengeId,
+          decision: receipt.decision,
+          createdAt: receipt.createdAt
+        },
+        evidence
+      )
     });
   })
 );
@@ -406,6 +607,7 @@ pbiRouter.get(
   "/receipts",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
+    const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
     const parsed = ReceiptListQuery.safeParse(req.query ?? {});
 
     if (parsed && !parsed.success) {
@@ -415,71 +617,58 @@ pbiRouter.get(
 
     const params = parsed.data;
     const limit = params.limit ?? 50;
+    const order = params.order;
 
-    const values: Array<string | number | Date> = [apiKey.id];
-    const clauses = ["r.api_key_id = $1"];
+    const { text, values } = buildReceiptQuery({
+      apiKeyId: apiKey.id,
+      limit,
+      order,
+      cursor: params.cursor,
+      actionHashHex: params.actionHashHex,
+      challengeId: params.challengeId,
+      purpose: params.purpose,
+      decision: params.decision,
+      createdAfter: params.createdAfter,
+      createdBefore: params.createdBefore
+    });
 
-    if (params.cursor) {
-      values.push(params.cursor.createdAt, params.cursor.id);
-      clauses.push(
-        `(r.created_at < $${values.length - 1} OR (r.created_at = $${values.length - 1} AND r.id < $${
-          values.length
-        }))`
-      );
-    }
+    const rows = await pool.query(text, values);
+    const evidence = buildEvidenceMetadata({ traceId });
+    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
+      const challengeRowId = row.challenge_row_id as string | null;
+      const challenge =
+        challengeRowId !== null
+          ? withEvidenceMetadata(
+              {
+                id: String(row.challenge_id),
+                purpose: String(row.purpose),
+                actionHashHex: String(row.action_hash_hex),
+                expiresAtIso: new Date(row.expires_at as string).toISOString(),
+                usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
+              },
+              evidence
+            )
+          : null;
 
-    if (params.actionHashHex) {
-      values.push(params.actionHashHex);
-      clauses.push(`c.action_hash_hex = $${values.length}`);
-    }
-
-    if (params.challengeId) {
-      values.push(params.challengeId);
-      clauses.push(`r.challenge_id = $${values.length}`);
-    }
-
-    if (params.purpose) {
-      values.push(params.purpose);
-      clauses.push(`c.purpose = $${values.length}`);
-    }
-
-    if (params.decision) {
-      values.push(params.decision);
-      clauses.push(`r.decision = $${values.length}`);
-    }
-
-    values.push(limit);
-
-    const query = `
-      SELECT r.id, r.challenge_id, r.receipt_hash_hex, r.decision, r.created_at,
-             c.purpose, c.action_hash_hex, c.expires_at, c.used_at
-      FROM pbi_receipts r
-      JOIN pbi_challenges c ON c.id = r.challenge_id
-      WHERE ${clauses.join(" AND ")}
-      ORDER BY r.created_at DESC, r.id DESC
-      LIMIT $${values.length}
-    `;
-
-    const rows = await pool.query(query, values);
-    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => ({
-      receipt: {
-        id: String(row.id),
-        challengeId: String(row.challenge_id),
-        receiptHashHex: String(row.receipt_hash_hex),
-        decision: String(row.decision),
-        createdAt: new Date(row.created_at as string).toISOString()
-      },
-      challenge: {
-        id: String(row.challenge_id),
-        purpose: String(row.purpose),
-        actionHashHex: String(row.action_hash_hex),
-        expiresAtIso: new Date(row.expires_at as string).toISOString(),
-        usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
-      }
-    }));
+      return {
+        receipt: withEvidenceMetadata(
+          {
+            id: String(row.id),
+            challengeId: String(row.challenge_id),
+            receiptHashHex: String(row.receipt_hash_hex),
+            decision: String(row.decision),
+            createdAt: new Date(row.created_at as string).toISOString()
+          },
+          evidence
+        ),
+        challenge
+      };
+    });
 
     const last = receipts.at(-1);
-    const nextCursor = last ? `${last.receipt.createdAt}|${last.receipt.id}` : null;
+    const nextCursor = last
+      ? encodeReceiptCursor({ createdAt: new Date(last.receipt.createdAt), id: last.receipt.id })
+      : null;
 
     res.json({ receipts, nextCursor });
   })

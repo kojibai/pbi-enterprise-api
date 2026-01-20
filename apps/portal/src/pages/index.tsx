@@ -554,8 +554,10 @@ POST /v1/pbi/verify     { assertion }
                   bullets={[
                     "/v1/pbi/challenge",
                     "/v1/pbi/verify",
-                    "/v1/pbi/receipts",
+                    "/v1/pbi/receipts?createdAfter&order&cursor",
                     "/v1/pbi/receipts/{receiptId}",
+                    "/v1/pbi/receipts/export",
+                    "/v1/portal/webhooks",
                     "Auth: Bearer API key",
                     "Receipt + pack/proof model"
                   ]}

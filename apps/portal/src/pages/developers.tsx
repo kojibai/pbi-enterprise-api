@@ -192,6 +192,54 @@ Content-Type: application/json
 
             <section className="pbi-section">
               <SectionHead
+                kicker="Export packs + webhooks"
+                title="Verify receipts offline & validate webhook signatures"
+                body="Enterprise exports ship as a signed zip pack. Webhooks are signed per-delivery for tamper-evidence."
+              />
+
+              <div className="pbi-card">
+                <div className="pbi-cardTitle">1) Verify file hashes</div>
+                <div className="pbi-cardBody" style={{ marginTop: 6 }}>
+                  Compute SHA-256 for each file in the pack and compare to the manifest entries.
+                </div>
+                <pre className="pbi-code" style={{ marginTop: 10 }}>{`sha256sum receipts.ndjson
+sha256sum policy.snapshot.json
+sha256sum trust.snapshot.json # optional`}</pre>
+              </div>
+
+              <div className="pbi-card" style={{ marginTop: 14 }}>
+                <div className="pbi-cardTitle">2) Verify the manifest signature</div>
+                <div className="pbi-cardBody" style={{ marginTop: 6 }}>
+                  Canonicalize manifest.json (sorted JSON keys) and verify the Ed25519 signature in manifest.sig.json using the included public key.
+                </div>
+                <pre className="pbi-code" style={{ marginTop: 10 }}>{`signature = ed25519_verify(publicKeyPem, canonical_manifest_bytes)
+assert(signature === manifestSig.signatureB64Url)`}</pre>
+              </div>
+
+              <div className="pbi-card" style={{ marginTop: 14 }}>
+                <div className="pbi-cardTitle">3) Parse receipts.ndjson</div>
+                <div className="pbi-cardBody" style={{ marginTop: 6 }}>
+                  Each line is one JSON object of the form: <code>{"{ receipt, challenge }"}</code>.
+                </div>
+                <pre className="pbi-code" style={{ marginTop: 10 }}>{`for line in receipts.ndjson:
+  obj = JSON.parse(line)
+  receipt = obj.receipt
+  challenge = obj.challenge`}</pre>
+              </div>
+
+              <div className="pbi-card" style={{ marginTop: 14 }}>
+                <div className="pbi-cardTitle">Webhook signature verification</div>
+                <div className="pbi-cardBody" style={{ marginTop: 6 }}>
+                  Use the secret from the portal to compute HMAC-SHA256 over <code>{"<timestamp>.<deliveryId>.<rawBody>"}</code>.
+                </div>
+                <pre className="pbi-code" style={{ marginTop: 10 }}>{`base = timestamp + "." + deliveryId + "." + rawBody
+expected = hmac_sha256(secret, base)
+assert("v1=" + expected === headers["X-PBI-Signature"])`}</pre>
+              </div>
+            </section>
+
+            <section className="pbi-section">
+              <SectionHead
                 kicker="Patterns"
                 title="Where PBI belongs (and where it doesn’t)"
                 body="Large companies keep UX clean by gating only high-blast-radius actions."

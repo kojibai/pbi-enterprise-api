@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: PBI Enterprise API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Presence-Bound Identity (PBI) enterprise API:
     - issues action/artifact-bound challenges
@@ -19,6 +19,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: API_KEY
+    PortalSession:
+      type: apiKey
+      in: cookie
+      name: pbi_portal_session
 
   schemas:
     ErrorResponse:
@@ -40,6 +44,24 @@ components:
         quota: { type: string, example: "100000" }
       required: [month, used, quota]
 
+    Verifier:
+      type: object
+      properties:
+        method: { type: string, enum: [webauthn] }
+        up: { type: boolean }
+        uv: { type: boolean }
+        rpId: { type: string }
+      required: [method, up, uv]
+
+    EvidenceMetadata:
+      type: object
+      properties:
+        policyVer: { type: string }
+        policyHash: { type: string }
+        verifier:
+          $ref: "#/components/schemas/Verifier"
+        traceId: { type: string }
+
     PBIChallenge:
       type: object
       properties:
@@ -50,6 +72,11 @@ components:
           enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
         actionHashHex: { type: string, pattern: "^[0-9a-f]{64}$" }
         expiresAtIso: { type: string, format: date-time }
+        policyVer: { type: string }
+        policyHash: { type: string }
+        verifier:
+          $ref: "#/components/schemas/Verifier"
+        traceId: { type: string }
       required: [id, challengeB64Url, purpose, actionHashHex, expiresAtIso]
 
     ChallengeRequest:
@@ -126,6 +153,11 @@ components:
               type: string
               enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
             actionHashHex: { type: string, pattern: "^[0-9a-f]{64}$" }
+            policyVer: { type: string }
+            policyHash: { type: string }
+            verifier:
+              $ref: "#/components/schemas/Verifier"
+            traceId: { type: string }
           required: [id, purpose, actionHashHex]
         metering:
           $ref: "#/components/schemas/Metering"
@@ -142,6 +174,11 @@ components:
           type: string
           enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
         createdAt: { type: string, format: date-time }
+        policyVer: { type: string }
+        policyHash: { type: string }
+        verifier:
+          $ref: "#/components/schemas/Verifier"
+        traceId: { type: string }
       required: [id, challengeId, receiptHashHex, decision, createdAt]
 
     ReceiptResponse:
@@ -168,6 +205,11 @@ components:
         status:
           type: string
           enum: [active, expired, used]
+        policyVer: { type: string }
+        policyHash: { type: string }
+        verifier:
+          $ref: "#/components/schemas/Verifier"
+        traceId: { type: string }
       required: [id, purpose, actionHashHex, expiresAtIso, status]
 
     ChallengeStatusResponse:
@@ -197,6 +239,11 @@ components:
               type: string
               enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
             createdAt: { type: string, format: date-time }
+            policyVer: { type: string }
+            policyHash: { type: string }
+            verifier:
+              $ref: "#/components/schemas/Verifier"
+            traceId: { type: string }
           required: [id, challengeId, decision, createdAt]
       required: [ok, receipt]
 
@@ -206,8 +253,10 @@ components:
         receipt:
           $ref: "#/components/schemas/Receipt"
         challenge:
-          $ref: "#/components/schemas/ChallengeStatus"
-      required: [receipt, challenge]
+          allOf:
+            - $ref: "#/components/schemas/ChallengeStatus"
+          nullable: true
+      required: [receipt]
 
     ReceiptListResponse:
       type: object
@@ -219,7 +268,120 @@ components:
         nextCursor:
           type: string
           nullable: true
+          description: Opaque cursor for the next page (base64url JSON). Null when no more results.
       required: [receipts, nextCursor]
+
+    PortalApiKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        plan: { type: string }
+        quota_per_month: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        scopes:
+          type: array
+          items: { type: string }
+          nullable: true
+        last_used_at: { type: string, format: date-time, nullable: true }
+        last_used_ip: { type: string, nullable: true }
+      required: [id, label, plan, quota_per_month, is_active, created_at]
+
+    PortalWebhookEndpoint:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        apiKeyId: { type: string, format: uuid }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, apiKeyId, url, events, enabled]
+
+    PortalWebhookCreateRequest:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string, enum: [receipt.created] }
+        enabled: { type: boolean }
+      required: [url, events]
+
+    PortalWebhookUpdateRequest:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string, enum: [receipt.created] }
+        enabled: { type: boolean }
+
+    PortalWebhookListResponse:
+      type: object
+      properties:
+        webhooks:
+          type: array
+          items: { $ref: "#/components/schemas/PortalWebhookEndpoint" }
+      required: [webhooks]
+
+    PortalWebhookCreateResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        webhook: { $ref: "#/components/schemas/PortalWebhookEndpoint" }
+        secret: { type: string }
+      required: [ok, webhook, secret]
+
+    PortalWebhookRotateResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        secret: { type: string }
+      required: [ok, secret]
+
+    PortalApiKeyListResponse:
+      type: object
+      properties:
+        apiKeys:
+          type: array
+          items: { $ref: "#/components/schemas/PortalApiKey" }
+      required: [apiKeys]
+
+    PortalApiKeyCreateRequest:
+      type: object
+      properties:
+        label: { type: string }
+        scopes:
+          type: array
+          items: { type: string, enum: [pbi.verify, pbi.read_receipts, pbi.export] }
+
+    PortalApiKeyCreateResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        apiKeyId: { type: string, format: uuid }
+        rawApiKey: { type: string }
+      required: [ok, apiKeyId, rawApiKey]
+
+    PortalApiKeyRotateRequest:
+      type: object
+      properties:
+        keepOldActive: { type: boolean }
+
+    PortalApiKeyRotateResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        apiKeyId: { type: string, format: uuid }
+        rawApiKey: { type: string }
+        oldApiKeyId: { type: string, format: uuid }
+        oldApiKeyDisabled: { type: boolean }
+      required: [ok, apiKeyId, rawApiKey, oldApiKeyId, oldApiKeyDisabled]
 
     UsageResponse:
       type: object
@@ -383,14 +545,36 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 200
+            maximum: 500
             default: 50
         - in: query
           name: cursor
           required: false
-          description: Pagination cursor in the format <ISO8601>|<receiptId>
+          description: Opaque cursor (base64url JSON). Encodes the last item's createdAt + id boundary and is stable across inserts.
           schema:
             type: string
+        - in: query
+          name: createdAfter
+          required: false
+          description: Inclusive lower bound on receipt createdAt (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: createdBefore
+          required: false
+          description: Exclusive upper bound on receipt createdAt (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: order
+          required: false
+          description: Ordering by (createdAt, id) tuple
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
         - in: query
           name: actionHashHex
           required: false
@@ -423,6 +607,85 @@ paths:
               schema: { $ref: "#/components/schemas/ReceiptListResponse" }
         "400":
           description: Invalid query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/pbi/receipts/export:
+    get:
+      summary: Export receipts as a signed, offline-verifiable zip pack
+      description: |
+        Generates a zip with receipts.ndjson, policy.snapshot.json, manifest.json, manifest.sig.json, and optional trust.snapshot.json.
+        Requires `pbi.export` scope when scopes are configured.
+        Large exports may require both createdAfter and createdBefore.
+      parameters:
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+        - in: query
+          name: createdAfter
+          required: false
+          description: Inclusive lower bound on receipt createdAt (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: createdBefore
+          required: false
+          description: Exclusive upper bound on receipt createdAt (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - in: query
+          name: actionHashHex
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9a-f]{64}$"
+        - in: query
+          name: challengeId
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: purpose
+          required: false
+          schema:
+            type: string
+            enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
+        - in: query
+          name: decision
+          required: false
+          schema:
+            type: string
+            enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
+      responses:
+        "200":
+          description: Zip export pack
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Insufficient scope
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -475,6 +738,180 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "404":
           description: Receipt not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/portal/api-keys:
+    get:
+      summary: List API keys for the portal customer
+      security:
+        - PortalSession: []
+      responses:
+        "200":
+          description: API keys
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalApiKeyListResponse" }
+    post:
+      summary: Create a new API key for the portal customer
+      security:
+        - PortalSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalApiKeyCreateRequest" }
+      responses:
+        "200":
+          description: API key created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalApiKeyCreateResponse" }
+        "402":
+          description: No active plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/portal/api-keys/{id}/rotate:
+    post:
+      summary: Rotate an existing API key
+      security:
+        - PortalSession: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalApiKeyRotateRequest" }
+      responses:
+        "200":
+          description: Rotation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalApiKeyRotateResponse" }
+        "404":
+          description: API key not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/portal/webhooks:
+    get:
+      summary: List portal webhook endpoints
+      security:
+        - PortalSession: []
+      responses:
+        "200":
+          description: Webhook endpoints
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalWebhookListResponse" }
+    post:
+      summary: Create a webhook endpoint
+      description: |
+        Deliveries are signed with HMAC-SHA256.
+        Headers: X-PBI-Event, X-PBI-Delivery-Id, X-PBI-Timestamp, X-PBI-Signature.
+        Signature base string: `<timestamp>.<deliveryId>.<rawBody>`.
+        Retries use exponential backoff up to 8 attempts.
+      security:
+        - PortalSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalWebhookCreateRequest" }
+      responses:
+        "200":
+          description: Webhook created (secret returned once)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalWebhookCreateResponse" }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/portal/webhooks/{id}/rotate-secret:
+    post:
+      summary: Rotate a webhook secret
+      security:
+        - PortalSession: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Secret rotated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalWebhookRotateResponse" }
+        "404":
+          description: Webhook not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/portal/webhooks/{id}:
+    patch:
+      summary: Update a webhook endpoint
+      security:
+        - PortalSession: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalWebhookUpdateRequest" }
+      responses:
+        "200":
+          description: Webhook updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  webhook: { $ref: "#/components/schemas/PortalWebhookEndpoint" }
+                required: [ok, webhook]
+        "404":
+          description: Webhook not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      summary: Delete a webhook endpoint
+      security:
+        - PortalSession: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Webhook deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+        "404":
+          description: Webhook not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
