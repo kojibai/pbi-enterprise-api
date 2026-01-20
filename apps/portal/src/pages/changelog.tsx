@@ -43,6 +43,19 @@ export default function ChangelogPage() {
   // Newest first (enterprise expectation)
   const entries: ChangelogEntry[] = [
     {
+      version: "v1.5.0",
+      title: "Enterprise onboarding + CORS resilience (rollout guide, console links, origin normalization)",
+      dateISO: "2026-01-21",
+      tags: ["Reliability", "Portal", "Enterprise UX"],
+      bullets: [
+        "New public Enterprise Rollout Guide page: /enterprise/rollout (Day 0 → Day 7 production implementation sequence).",
+        "Console updated to surface the rollout guide at critical touchpoints (nav, setup CTAs, mobile quick actions, enterprise controls context).",
+        "CORS hardened for portal reliability: normalize origins (trim, strip quotes, remove trailing slashes) to prevent brittle exact-match failures.",
+        "CORS denial logging added (cors_origin_denied) to make production misconfiguration diagnosable instantly.",
+        "No breaking changes: existing portal and /v1/pbi integrations continue to work unchanged."
+      ]
+    },
+    {
       version: "v1.4.0",
       title: "Portal enterprise controls: webhooks + signed evidence exports (self-serve)",
       dateISO: "2026-01-21",

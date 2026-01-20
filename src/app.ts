@@ -3,6 +3,9 @@ import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { demoRouter } from "./routes/demo.js";
 import { logger } from "./util/logger.js";
 import { requestId } from "./middleware/requestId.js";
@@ -19,8 +22,6 @@ import { stripeRouter } from "./routes/stripe.js";
 import { pbiRouter } from "./routes/pbi.js";
 import { billingRouter } from "./routes/billing.js";
 import { adminRouter } from "./routes/admin.js";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +29,14 @@ const __dirname = path.dirname(__filename);
 // dist/src/server.js -> go up two levels to project root
 const publicDir = path.resolve(__dirname, "../../public");
 
-
+// Origin header never includes trailing slash; env vars often do.
+// Also some UIs wrap values in quotes. Normalize to prevent silent mismatch.
+function normalizeOrigin(input: string): string {
+  let s = input.trim();
+  s = s.replace(/^"+|"+$/g, "").replace(/^'+|'+$/g, "");
+  s = s.replace(/\/+$/g, "");
+  return s;
+}
 
 export function makeApp() {
   const app = express();
@@ -74,12 +82,18 @@ export function makeApp() {
   );
 
   // CORS for portal (credentials required for cookies)
-  const allowedOrigins = new Set<string>(config.allowedOrigins);
+  const allowedOrigins = new Set<string>(config.allowedOrigins.map(normalizeOrigin));
 
   const corsOptions: cors.CorsOptions = {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true); // server-to-server / curl
-      if (allowedOrigins.has(origin)) return cb(null, origin); // echo the origin (not boolean)
+
+      const o = normalizeOrigin(origin);
+
+      if (allowedOrigins.has(o)) return cb(null, o); // echo the origin (not boolean)
+
+      // Log once per denied request so prod debugging is instant.
+      logger.warn({ origin: o, allowedOrigins: Array.from(allowedOrigins) }, "cors_origin_denied");
       return cb(null, false);
     },
     credentials: true,
@@ -98,8 +112,10 @@ export function makeApp() {
   // Public UI/docs + health
   app.use("/", publicRouter);
   app.use("/", healthRouter);
-// Public demo proxy
-app.use("/demo", demoRouter);
+
+  // Public demo proxy
+  app.use("/demo", demoRouter);
+
   // ✅ Portal + Stripe must be PUBLIC (no API key)
   app.use("/v1/portal", portalRouter);
   app.use("/v1/stripe", stripeRouter);

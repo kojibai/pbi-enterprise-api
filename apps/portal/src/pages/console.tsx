@@ -37,6 +37,8 @@ const PLAN_PRICE: Record<PlanKey, string> = {
   enterprise: "$1,999"
 };
 
+const ROLLOUT_URL = "/enterprise/rollout";
+
 function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
   const s = String(raw ?? "").toLowerCase().trim();
   if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
@@ -358,6 +360,11 @@ export default function Home() {
               Billing
             </a>
 
+            {/* New: Rollout Guide */}
+            <a className="navLink" href={ROLLOUT_URL}>
+              Rollout Guide
+            </a>
+
             <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
               Demo
             </a>
@@ -396,7 +403,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <p className="lead">Keys mint access. Usage is metered. Evidence exports are verifiable.</p>
+                <p className="lead">
+                  Keys mint access. Usage is metered. Evidence exports are verifiable.{" "}
+                  <a href={ROLLOUT_URL} style={{ color: "rgba(120,255,231,.92)", fontWeight: 900 }}>
+                    Rollout guide →
+                  </a>
+                </p>
 
                 <div className="kpiRow kpiRow5">
                   <KPI label="Plan" value={planUpper} />
@@ -423,8 +435,8 @@ export default function Home() {
                       <a className="btnGhost" href="/api-keys">
                         Manage keys →
                       </a>
-                      <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-                        Run demo →
+                      <a className="btnGhost" href={ROLLOUT_URL}>
+                        Rollout guide →
                       </a>
                     </div>
                   </div>
@@ -449,6 +461,11 @@ export default function Home() {
                       Demo →
                     </a>
                   )}
+
+                  {/* New: Rollout guide quick access */}
+                  <a className="btnGhost" href={ROLLOUT_URL}>
+                    Rollout →
+                  </a>
                 </div>
 
                 {rawKey ? (
@@ -474,6 +491,15 @@ export default function Home() {
 
                 {/* MOBILE: one-screen “app” dashboard actions */}
                 <div className="mobileQuick">
+                  <div className="mobileCard">
+                    <div className="kicker">Getting started</div>
+                    <div className="mobileTitle">Rollout guide</div>
+                    <div className="hint">Day 0 → Day 7 implementation plan.</div>
+                    <a className="linkBtnPrimary" href={ROLLOUT_URL}>
+                      Open →
+                    </a>
+                  </div>
+
                   <div className="mobileCard">
                     <div className="kicker">API Keys</div>
                     <div className="mobileTitle">Manage keys</div>
@@ -616,9 +642,12 @@ export default function Home() {
 
                   <div className="divider" />
 
-                  <div className="priceTitle">Tools</div>
+                  <div className="priceTitle">Getting started</div>
 
                   <div className="planBtns">
+                    <a className="btnGhost" href={ROLLOUT_URL}>
+                      Rollout guide →
+                    </a>
                     <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
                       Demo →
                     </a>
@@ -634,7 +663,7 @@ export default function Home() {
                   </div>
 
                   <div className="hint" style={{ marginTop: 10 }}>
-                    Demo is public-safe. Attester Tool is for integration testing (BYOK).
+                    Rollout guide describes Day 0 → Day 7 production implementation and governance.
                   </div>
                 </div>
               </aside>
@@ -647,15 +676,20 @@ export default function Home() {
               <div className="panelHead">
                 <div>
                   <div className="kicker">Enterprise Controls</div>
-                  <div className="panelTitle">Webhooks</div>
+                  <div className="panelTitle">
+                    Webhooks{" "}
+                    <a href={ROLLOUT_URL} className="panelLink" aria-label="Open rollout guide">
+                      Rollout guide →
+                    </a>
+                  </div>
                 </div>
                 <div className="panelMeta">{webhooks.length} configured</div>
               </div>
 
               <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                 <div className="panelMeta">
-                  Push <span style={{ color: "rgba(120,255,231,.92)", fontWeight: 900 }}>receipt.created</span> events to your systems with
-                  signed delivery headers. Rotate secrets on schedule and after any incident.
+                  Push <span style={{ color: "rgba(120,255,231,.92)", fontWeight: 900 }}>receipt.created</span> events to your systems with signed
+                  delivery headers. Rotate secrets on schedule and after any incident.
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -673,12 +707,13 @@ export default function Home() {
                 {isPending ? (
                   <div className="pendingCallout" role="status">
                     <div className="pendingTitle">Enterprise controls locked</div>
-                    <div className="pendingBody">
-                      Activate billing to enable webhook configuration and export access.
-                    </div>
+                    <div className="pendingBody">Activate billing to enable webhook configuration and export access.</div>
                     <div className="pendingBtns">
                       <a className="btnPrimary" href="/billing">
                         Activate billing →
+                      </a>
+                      <a className="btnGhost" href={ROLLOUT_URL}>
+                        Rollout guide →
                       </a>
                     </div>
                   </div>
@@ -738,12 +773,7 @@ export default function Home() {
                         <div className="cell right">{w.events.join(", ")}</div>
                         <div className="cell right">{w.enabled ? "Yes" : "No"}</div>
                         <div className="cell right" style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-                          <button
-                            className="btnGhost"
-                            disabled={!!busy || isPending}
-                            onClick={() => rotateWebhookSecret(w.id)}
-                            type="button"
-                          >
+                          <button className="btnGhost" disabled={!!busy || isPending} onClick={() => rotateWebhookSecret(w.id)} type="button">
                             {busy === `wh:rot:${w.id}` ? "Rotating…" : "Rotate"}
                           </button>
                           <button className="btnDanger" disabled={!!busy || isPending} onClick={() => deleteWebhook(w.id)} type="button">
@@ -761,7 +791,12 @@ export default function Home() {
               <div className="panelHead">
                 <div>
                   <div className="kicker">Compliance</div>
-                  <div className="panelTitle">Export evidence pack</div>
+                  <div className="panelTitle">
+                    Export evidence pack{" "}
+                    <a href={ROLLOUT_URL} className="panelLink" aria-label="Open rollout guide">
+                      Rollout guide →
+                    </a>
+                  </div>
                 </div>
                 <div className="panelMeta">Offline-verifiable ZIP</div>
               </div>
@@ -791,6 +826,7 @@ export default function Home() {
               <a href="/terms">Terms</a>
               <a href="/privacy">Privacy</a>
               <a href="/billing">Billing</a>
+              <a href={ROLLOUT_URL}>Rollout guide</a>
             </div>
           </footer>
         </div>
@@ -919,6 +955,7 @@ body{ margin:0; overflow-x:hidden; }
   min-height: 40px;
   display:inline-flex;
   align-items:center;
+  text-decoration:none;
 }
 .navLink:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 
@@ -973,7 +1010,7 @@ body{ margin:0; overflow-x:hidden; }
   .heroGrid{ grid-template-columns: 1fr; }
 }
 
-/* Pill + headings */
+/* Pill + lead */
 .pill{
   display:inline-flex; align-items:center; gap:10px;
   padding: 8px 10px;
@@ -1169,6 +1206,16 @@ body{ margin:0; overflow-x:hidden; }
 .priceTitle{ font-weight: 950; }
 .planBtns{ display:grid; gap: 8px; }
 
+/* New: small inline link in panel headers */
+.panelLink{
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(120,255,231,.92);
+  text-decoration: none;
+}
+.panelLink:hover{ text-decoration: underline; }
+
 /* Mobile “one screen dashboard” */
 .mobileQuick{ display:none; }
 .inlinePlans{ display:none; }
@@ -1303,6 +1350,6 @@ body{ margin:0; overflow-x:hidden; }
   font-size: 12px;
 }
 .footerLinks{ display:flex; gap: 12px; flex-wrap: wrap; }
-.footer a{ color: rgba(120,255,231,.9); }
+.footer a{ color: rgba(120,255,231,.9); text-decoration:none; }
 .footer a:hover{ text-decoration: underline; }
 `;
