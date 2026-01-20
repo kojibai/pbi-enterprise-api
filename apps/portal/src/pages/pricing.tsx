@@ -157,7 +157,7 @@ export default function PricingPage() {
 
                   <div className="pbi-ctaRow">
                     <a className="pbi-btnPrimary" href={auth === "logged_in" ? "/console" : "/#access"}>
-                      {auth === "logged_in" ? "Go to console" : "Get access"} <span aria-hidden>→</span>
+                      {auth === "logged_in" ? "Go to Dashboard" : "Get access"} <span aria-hidden>→</span>
                     </a>
                     <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
                       Read API docs
@@ -230,7 +230,7 @@ count(decision == PBI_VERIFIED)`}</pre>
                     "Receipt hash + audit trail",
                     "Overage billed per verification (shown in portal)",
                   ]}
-                  ctaLabel={auth === "logged_in" ? "Open console" : "Get access"}
+                  ctaLabel={auth === "logged_in" ? "Open Dashboard" : "Get access"}
                   ctaHref={auth === "logged_in" ? "/console" : "/#access"}
                 />
 
@@ -247,7 +247,7 @@ count(decision == PBI_VERIFIED)`}</pre>
                     "Overage billed per verification (shown in portal)",
                   ]}
                   featured
-                  ctaLabel={auth === "logged_in" ? "Open console" : "Get access"}
+                  ctaLabel={auth === "logged_in" ? "Open Dashboard" : "Get access"}
                   ctaHref={auth === "logged_in" ? "/console" : "/#access"}
                 />
 
@@ -265,7 +265,7 @@ count(decision == PBI_VERIFIED)`}</pre>
                     "Overage billed per verification (shown in portal)",
                   ]}
                   featured
-                  ctaLabel={auth === "logged_in" ? "Open console" : "Get access"}
+                  ctaLabel={auth === "logged_in" ? "Open Dashboard" : "Get access"}
                   ctaHref={auth === "logged_in" ? "/console" : "/#access"}
                 />
 
@@ -303,7 +303,7 @@ count(decision == PBI_VERIFIED)`}</pre>
 
                 <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <a className="pbi-btnPrimary" href={auth === "logged_in" ? "/console" : "/#access"}>
-                    {auth === "logged_in" ? "Go to console →" : "Get access →"}
+                    {auth === "logged_in" ? "Go to Dashboard →" : "Get access →"}
                   </a>
                   <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
                     Docs →
