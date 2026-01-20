@@ -336,7 +336,7 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
         <a href="/status">Status</a>
         {auth === "logged_in" ? (
           <a className="pbi-navCta" href="/console">
-            Console
+            Dashboard
           </a>
         ) : (
           <a className="pbi-navCta" href="/#access">
