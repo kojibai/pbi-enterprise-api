@@ -33,17 +33,23 @@ export function startWebhookDeliveryWorker(intervalMs = 5000): WebhookWorker {
 }
 
 export async function processPendingDeliveries(fetchImpl: typeof fetch = fetch): Promise<number> {
-  const rows = await pool.query(
-    `SELECT d.id, d.endpoint_id, d.event, d.payload_json, d.attempts,
-            e.url, e.secret_ciphertext, e.secret_iv, e.secret_tag
-     FROM webhook_deliveries d
-     JOIN webhook_endpoints e ON e.id = d.endpoint_id
-     WHERE d.status='pending'
-       AND d.next_attempt_at <= now()
-       AND e.enabled=TRUE
-     ORDER BY d.next_attempt_at ASC
-     LIMIT 25`
-  );
+  let rows;
+  try {
+    rows = await pool.query(
+      `SELECT d.id, d.endpoint_id, d.event, d.payload_json, d.attempts,
+              e.url, e.secret_ciphertext, e.secret_iv, e.secret_tag
+       FROM webhook_deliveries d
+       JOIN webhook_endpoints e ON e.id = d.endpoint_id
+       WHERE d.status='pending'
+         AND d.next_attempt_at <= now()
+         AND e.enabled=TRUE
+       ORDER BY d.next_attempt_at ASC
+       LIMIT 25`
+    );
+  } catch (err) {
+    logger.warn({ err }, "webhook_worker_db_unavailable");
+    return 0;
+  }
 
   let processed = 0;
 
