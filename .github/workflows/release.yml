@@ -1,17 +1,15 @@
-name: Release
+name: Publish SDK
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "presencebound-sdk-v*"
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +24,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Publish
-        run: npx semantic-release
+      - name: Build SDK
+        run: npm run -w presencebound-sdk build
+
+      - name: Test SDK
+        run: npm run -w presencebound-sdk test
+
+      - name: Publish SDK
+        run: npm publish -w presencebound-sdk --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
