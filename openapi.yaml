@@ -28,6 +28,7 @@ components:
           type: string
       required: [error]
 
+
     PBIChallenge:
       type: object
       properties:
@@ -104,6 +105,71 @@ components:
           required: [id, purpose, actionHashHex]
       required: [ok, decision]
 
+
+    Receipt:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeId: { type: string, format: uuid }
+        receiptHashHex: { type: string }
+        decision:
+          type: string
+          enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
+        createdAt: { type: string, format: date-time }
+      required: [id, challengeId, receiptHashHex, decision, createdAt]
+
+    ReceiptResponse:
+      type: object
+      properties:
+        receipt:
+          $ref: "#/components/schemas/Receipt"
+      required: [receipt]
+
+    ChallengeStatus:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        purpose:
+          type: string
+          enum: [ACTION_COMMIT, ARTIFACT_AUTHORSHIP, EVIDENCE_SUBMIT, ADMIN_DANGEROUS_OP]
+        actionHashHex: { type: string, pattern: "^[0-9a-f]{64}$" }
+        expiresAtIso: { type: string, format: date-time }
+        usedAtIso: { type: string, format: date-time, nullable: true }
+        status:
+          type: string
+          enum: [active, expired, used]
+      required: [id, purpose, actionHashHex, expiresAtIso, status]
+
+    ChallengeStatusResponse:
+      type: object
+      properties:
+        challenge:
+          $ref: "#/components/schemas/ChallengeStatus"
+      required: [challenge]
+
+    ReceiptVerifyRequest:
+      type: object
+      properties:
+        receiptId: { type: string, format: uuid }
+        receiptHashHex: { type: string }
+      required: [receiptId, receiptHashHex]
+
+    ReceiptVerifyResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        receipt:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            challengeId: { type: string, format: uuid }
+            decision:
+              type: string
+              enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
+            createdAt: { type: string, format: date-time }
+          required: [id, challengeId, decision, createdAt]
+      required: [ok, receipt]
+
     UsageResponse:
       type: object
       properties:
@@ -133,6 +199,7 @@ components:
               finalizedAt: { type: string, format: date-time, nullable: true }
             required: [id, month, status, totalCents, lineItems, createdAt]
       required: [invoices]
+
 
 security:
   - ApiKeyBearer: []
@@ -191,6 +258,92 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VerifyResponse" }
 
+  /v1/pbi/challenges/{challengeId}:
+    get:
+      summary: Fetch challenge status
+      parameters:
+        - in: path
+          name: challengeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Challenge status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChallengeStatusResponse" }
+        "404":
+          description: Challenge not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/pbi/challenges/{challengeId}/receipt:
+    get:
+      summary: Fetch receipt for a challenge
+      parameters:
+        - in: path
+          name: challengeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptResponse" }
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/pbi/receipts/{receiptId}:
+    get:
+      summary: Fetch a receipt by id
+      parameters:
+        - in: path
+          name: receiptId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptResponse" }
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/pbi/receipts/verify:
+    post:
+      summary: Verify a receipt hash against stored receipt data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReceiptVerifyRequest" }
+      responses:
+        "200":
+          description: Receipt verification result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptVerifyResponse" }
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
   /v1/billing/usage:
     get:
       summary: Usage for current or requested month
@@ -217,4 +370,3 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/InvoicesResponse" }
-              
