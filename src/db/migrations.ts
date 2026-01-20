@@ -255,4 +255,44 @@ export async function runMigrations(): Promise<void> {
 
     await markApplied(patchId3);
   }
+
+  // ---------------------------------------------------------------------------
+  // Patch 4: webhook delivery status hardening (processing + defaults + indexes)
+  // ---------------------------------------------------------------------------
+  const patchId4 = "2026-02-02_webhook_delivery_processing_hardening";
+  if (!(await alreadyApplied(patchId4))) {
+    await pool.query(`
+      -- Ensure a safe default for new rows
+      ALTER TABLE webhook_deliveries
+        ALTER COLUMN status SET DEFAULT 'pending';
+
+      -- Normalize any unexpected empty strings (defensive)
+      UPDATE webhook_deliveries
+      SET status='pending', updated_at=now()
+      WHERE status = '';
+
+      -- Add a CHECK constraint (idempotent via DO block) so status values stay sane.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'webhook_deliveries_status_check'
+        ) THEN
+          ALTER TABLE webhook_deliveries
+            ADD CONSTRAINT webhook_deliveries_status_check
+            CHECK (status IN ('pending','processing','delivered','failed'));
+        END IF;
+      END $$;
+
+      -- Speed up the worker's primary scan and stale-reclaim scan
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status_next
+        ON webhook_deliveries(status, next_attempt_at);
+
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status_updated
+        ON webhook_deliveries(status, updated_at);
+    `);
+
+    await markApplied(patchId4);
+  }
 }

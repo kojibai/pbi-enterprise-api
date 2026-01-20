@@ -1,7 +1,9 @@
 import type { RequestHandler, Response } from "express";
 import { Router } from "express";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import fs from "node:fs";
+
 import type { AuthedRequest } from "../middleware/apiKeyAuth.js";
 import { createChallenge, getChallenge, markChallengeUsed } from "../pbi/challengeStore.js";
 import { verifyWebAuthnAssertion } from "../pbi/verify.js";
@@ -9,16 +11,17 @@ import { getReceiptByChallengeId, getReceiptById, mintReceipt, storeReceipt } fr
 import { pool } from "../db/pool.js";
 import { consumeQuotaUnit } from "../billing/quota.js";
 import { buildEvidenceMetadata, withEvidenceMetadata } from "../pbi/evidence.js";
+import type { VerifierInfo } from "../pbi/evidence.js";
 import { decodeReceiptCursor, encodeReceiptCursor } from "../pbi/receiptCursor.js";
 import { buildReceiptQuery } from "../pbi/receiptQuery.js";
 import { enqueueReceiptCreated } from "../webhooks/queue.js";
 import { requireScope } from "../middleware/requireScope.js";
-import { buildExportPack } from "../pbi/exportPack.js";
+import { buildExportPack, derivePublicKeyPem } from "../pbi/exportPack.js";
+
 import { config } from "../config.js";
-import fs from "node:fs";
 import { logger } from "../util/logger.js";
 import { createZipFromFiles } from "../util/zip.js";
-import type { VerifierInfo } from "../pbi/evidence.js";
+import { canonicalizeJson } from "../util/jsonCanonical.js";
 
 function evidenceParams(traceId: string | undefined, verifier?: VerifierInfo): { traceId?: string; verifier?: VerifierInfo } {
   return {
@@ -31,8 +34,7 @@ export const pbiRouter = Router();
 
 /**
  * Express 4 does NOT catch async exceptions by default.
- * This wrapper ensures any thrown error reaches your app-level errorHandler
- * instead of crashing the process (and causing 502s on Render).
+ * This wrapper ensures any thrown error reaches your app-level errorHandler.
  */
 function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>): RequestHandler {
   return (req, res, next) => {
@@ -42,25 +44,17 @@ function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>):
 
 const PurposeEnum = z.enum(["ACTION_COMMIT", "ARTIFACT_AUTHORSHIP", "EVIDENCE_SUBMIT", "ADMIN_DANGEROUS_OP"]);
 
-/**
- * Challenge request
- * - Accept BOTH: `purpose` (canonical) and `kind` (legacy/demo UI)
- * - Never throw on invalid input (use safeParse in handlers)
- */
 const ChallengeReq = z
   .object({
     purpose: PurposeEnum.optional(),
     kind: PurposeEnum.optional(),
-
     actionHashHex: z
       .string()
       .regex(/^[0-9a-f]{64}$/i, "actionHashHex must be 64 hex chars")
       .transform((s) => s.toLowerCase()),
-
     ttlSeconds: z.coerce.number().int().min(10).max(600).optional()
   })
   .superRefine((v, ctx) => {
-    // Require either purpose or kind
     if (!v.purpose && !v.kind) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -80,7 +74,9 @@ const VerifyReq = z.object({
     pubKeyPem: z.string().min(1)
   })
 });
+
 const ReceiptIdParam = z.string().uuid();
+
 const CursorParam = z.string().min(1).transform((value, ctx) => {
   const decoded = decodeReceiptCursor(value);
   if (!decoded) {
@@ -93,11 +89,8 @@ const CursorParam = z.string().min(1).transform((value, ctx) => {
   return decoded;
 });
 
-const IsoDateParam = z
-  .string()
-  .datetime()
-  .transform((value) => new Date(value));
-
+// Keep Zod parsing strict for query strings, but avoid relying on inferred Date types later.
+const IsoDateParam = z.string().datetime().transform((value) => new Date(value));
 
 const ReceiptListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
@@ -119,18 +112,52 @@ const ReceiptExportQuery = ReceiptListQuery.extend({
   limit: z.coerce.number().int().min(1).max(10000)
 }).omit({ cursor: true });
 
+function sha256HexUtf8(s: string): string {
+  return createHash("sha256").update(s, "utf8").digest("hex");
+}
+
+function normalizePem(pem: string): string {
+  return pem.trim().replace(/\r\n/g, "\n") + "\n";
+}
+
+function exportKeyIdFromPublicKeyPem(publicKeyPem: string): string {
+  const fp16 = sha256HexUtf8(normalizePem(publicKeyPem)).slice(0, 16);
+  return `pbi-export-${fp16}`;
+}
+
+function safeReadJsonObject(filePath: string): Record<string, unknown> | undefined {
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return undefined;
+  } catch (err) {
+    logger.warn({ err, filePath }, "trust_snapshot_read_failed");
+    return undefined;
+  }
+}
+
+function isoFromDb(v: unknown): string {
+  if (v instanceof Date) return v.toISOString();
+  const d = new Date(String(v));
+  if (!Number.isFinite(d.getTime())) throw new Error("invalid_db_date");
+  return d.toISOString();
+}
+
+// -----------------------------------------------------------------------------
+// Challenge + Verify
+// -----------------------------------------------------------------------------
 pbiRouter.post(
   "/challenge",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
-    const parsed = ChallengeReq.safeParse(req.body);
 
+    const parsed = ChallengeReq.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({
-        error: "invalid_request",
-        issues: parsed.error.issues
-      });
+      res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
       return;
     }
 
@@ -138,9 +165,7 @@ pbiRouter.post(
     const purpose = body.purpose ?? body.kind!;
     const ttlSeconds = body.ttlSeconds ?? 120;
 
-    const quota = apiKey.quotaPerMonth;
-
-    const q = await consumeQuotaUnit(apiKey.id, "challenge", quota);
+    const q = await consumeQuotaUnit(apiKey.id, "challenge", apiKey.quotaPerMonth);
     if (!q.ok) {
       res.status(402).json({
         error: "quota_exceeded",
@@ -155,16 +180,12 @@ pbiRouter.post(
     const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     const challengePayload = withEvidenceMetadata(ch, evidence);
 
-    // Keep response backward-friendly:
-    // - Tool/demo often expect id + challengeB64Url at top level
-    // - But also return the full object under `challenge` for your portal usage
     res.json({
       id: ch.id,
       challengeB64Url: ch.challengeB64Url,
       expiresAtIso: ch.expiresAtIso,
       purpose: ch.purpose,
       actionHashHex: ch.actionHashHex,
-
       challenge: challengePayload,
       metering: { month: q.monthKey, used: q.usedAfter.toString(), quota: q.quota.toString() }
     });
@@ -176,8 +197,8 @@ pbiRouter.post(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
-    const parsed = VerifyReq.safeParse(req.body);
 
+    const parsed = VerifyReq.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({
         ok: false,
@@ -201,7 +222,6 @@ pbiRouter.post(
       res.status(400).json({ ok: false, decision: "EXPIRED" });
       return;
     }
-
     if (stored.usedAt) {
       res.status(400).json({ ok: false, decision: "REPLAYED" });
       return;
@@ -222,10 +242,7 @@ pbiRouter.post(
       return;
     }
 
-    // ✅ Only charge quota if verification is valid
-    const quota = apiKey.quotaPerMonth;
-
-    const q = await consumeQuotaUnit(apiKey.id, "verify", quota);
+    const q = await consumeQuotaUnit(apiKey.id, "verify", apiKey.quotaPerMonth);
     if (!q.ok) {
       res.status(402).json({
         ok: false,
@@ -238,7 +255,6 @@ pbiRouter.post(
       return;
     }
 
-    // Burn the challenge (single-use)
     await markChallengeUsed(stored.id);
 
     const receipt = mintReceipt(stored.id, "PBI_VERIFIED");
@@ -258,14 +274,14 @@ pbiRouter.post(
       evidence
     );
 
-    const storedUsedAt = stored.usedAt as Date | null;
-    const usedAtIso = storedUsedAt ? storedUsedAt.toISOString() : null;
+    const usedAtIso = stored.usedAt ? isoFromDb(stored.usedAt) : null;
+
     const challengePayload = withEvidenceMetadata(
       {
         id: stored.id,
         purpose: stored.purpose,
         actionHashHex: stored.actionHashHex,
-        expiresAtIso: stored.expiresAt.toISOString(),
+        expiresAtIso: isoFromDb(stored.expiresAt),
         usedAtIso
       },
       evidence
@@ -276,7 +292,10 @@ pbiRouter.post(
         id: randomUUID(),
         type: "receipt.created" as const,
         createdAt: createdAtIso,
-        data: { receipt: receiptPayload, challenge: challengePayload }
+        data: {
+          receipt: receiptPayload as Record<string, unknown>,
+          challenge: challengePayload as Record<string, unknown>
+        }
       };
       await enqueueReceiptCreated(apiKey.id, receipt.receiptId, eventPayload);
     } catch (e) {
@@ -288,15 +307,15 @@ pbiRouter.post(
       decision: "PBI_VERIFIED",
       receiptId: receipt.receiptId,
       receiptHashHex: receipt.receiptHashHex,
-      challenge: withEvidenceMetadata(
-        { id: stored.id, purpose: stored.purpose, actionHashHex: stored.actionHashHex },
-        evidence
-      ),
+      challenge: withEvidenceMetadata({ id: stored.id, purpose: stored.purpose, actionHashHex: stored.actionHashHex }, evidence),
       metering: { month: q.monthKey, used: q.usedAfter.toString(), quota: q.quota.toString() }
     });
   })
 );
 
+// -----------------------------------------------------------------------------
+// Challenge fetch + receipt fetch by challenge
+// -----------------------------------------------------------------------------
 pbiRouter.get(
   "/challenges/:id",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -325,8 +344,8 @@ pbiRouter.get(
           id: stored.id,
           purpose: stored.purpose,
           actionHashHex: stored.actionHashHex,
-          expiresAtIso: stored.expiresAt.toISOString(),
-          usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null,
+          expiresAtIso: isoFromDb(stored.expiresAt),
+          usedAtIso: stored.usedAt ? isoFromDb(stored.usedAt) : null,
           status
         },
         evidence
@@ -361,8 +380,8 @@ pbiRouter.get(
             id: challenge.id,
             purpose: challenge.purpose,
             actionHashHex: challenge.actionHashHex,
-            expiresAtIso: challenge.expiresAt.toISOString(),
-            usedAtIso: challenge.usedAt ? challenge.usedAt.toISOString() : null
+            expiresAtIso: isoFromDb(challenge.expiresAt),
+            usedAtIso: challenge.usedAt ? isoFromDb(challenge.usedAt) : null
           },
           evidence
         )
@@ -384,15 +403,18 @@ pbiRouter.get(
   })
 );
 
+// -----------------------------------------------------------------------------
+// Receipts export (signed zip pack)
+// -----------------------------------------------------------------------------
 pbiRouter.get(
   "/receipts/export",
   requireScope("pbi.export"),
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
-    const parsed = ReceiptExportQuery.safeParse(req.query ?? {});
 
-    if (parsed && !parsed.success) {
+    const parsed = ReceiptExportQuery.safeParse(req.query ?? {});
+    if (!parsed.success) {
       res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
       return;
     }
@@ -427,25 +449,25 @@ pbiRouter.get(
     };
 
     const { text, values } = buildReceiptQuery(exportFilters);
-
     const rows = await pool.query(text, values);
+
     const evidence = buildEvidenceMetadata(evidenceParams(traceId));
 
     const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
-      const challengeRowId = row.challenge_row_id as string | null;
-      const challenge =
-        challengeRowId !== null
-          ? withEvidenceMetadata(
-              {
-                id: String(row.challenge_id),
-                purpose: String(row.purpose),
-                actionHashHex: String(row.action_hash_hex),
-                expiresAtIso: new Date(row.expires_at as string).toISOString(),
-                usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
-              },
-              evidence
-            )
-          : null;
+      const hasChallenge = (row.challenge_row_id as string | null) !== null;
+
+      const challenge = hasChallenge
+        ? withEvidenceMetadata(
+            {
+              id: String(row.challenge_id),
+              purpose: String(row.purpose),
+              actionHashHex: String(row.action_hash_hex),
+              expiresAtIso: isoFromDb(row.expires_at),
+              usedAtIso: row.used_at ? isoFromDb(row.used_at) : null
+            },
+            evidence
+          )
+        : null;
 
       return {
         receipt: withEvidenceMetadata(
@@ -454,7 +476,7 @@ pbiRouter.get(
             challengeId: String(row.challenge_id),
             receiptHashHex: String(row.receipt_hash_hex),
             decision: String(row.decision),
-            createdAt: new Date(row.created_at as string).toISOString()
+            createdAt: isoFromDb(row.created_at)
           },
           evidence
         ),
@@ -462,12 +484,10 @@ pbiRouter.get(
       };
     });
 
-    let trustSnapshot: Record<string, unknown> | undefined;
-    if (config.trustSnapshotPath && fs.existsSync(config.trustSnapshotPath)) {
-      const raw = fs.readFileSync(config.trustSnapshotPath, "utf8");
-      const parsedTrust = JSON.parse(raw) as Record<string, unknown>;
-      trustSnapshot = parsedTrust;
-    }
+    const trustSnapshot =
+      config.trustSnapshotPath && fs.existsSync(config.trustSnapshotPath)
+        ? safeReadJsonObject(config.trustSnapshotPath)
+        : undefined;
 
     const policySnapshot: Record<string, unknown> = {
       policyVer: config.policyVersion ?? null,
@@ -478,17 +498,22 @@ pbiRouter.get(
     const filters: Record<string, unknown> = {
       limit,
       order,
-      createdAfter: params.createdAfter ? params.createdAfter.toISOString() : null,
-      createdBefore: params.createdBefore ? params.createdBefore.toISOString() : null,
+      createdAfter: params.createdAfter ? isoFromDb(params.createdAfter) : null,
+      createdBefore: params.createdBefore ? isoFromDb(params.createdBefore) : null,
       actionHashHex: params.actionHashHex ?? null,
       challengeId: params.challengeId ?? null,
       purpose: params.purpose ?? null,
       decision: params.decision ?? null
     };
 
+    const publicKeyPem = config.exportSigningPublicKeyPem
+      ? normalizePem(config.exportSigningPublicKeyPem)
+      : normalizePem(derivePublicKeyPem(config.exportSigningPrivateKeyPem));
+
     const signingKey = {
       privateKeyPem: config.exportSigningPrivateKeyPem,
-      ...(config.exportSigningPublicKeyPem ? { publicKeyPem: config.exportSigningPublicKeyPem } : {})
+      publicKeyPem,
+      keyId: exportKeyIdFromPublicKeyPem(publicKeyPem)
     };
 
     const pack = buildExportPack({
@@ -499,26 +524,55 @@ pbiRouter.get(
       signingKey
     });
 
+    const manifestBytes = Buffer.from(canonicalizeJson(pack.manifest) + "\n", "utf8");
+    const sigBytes = Buffer.from(JSON.stringify(pack.signature, null, 2) + "\n", "utf8");
+    const verificationBytes = Buffer.from(
+      JSON.stringify(
+        {
+          format: "pbi-receipts-export-pack-1.0",
+          note:
+            "manifest.json is canonical JSON and is what is signed. For authenticity, pin the signing key out-of-band (keyId/publicKeyPem).",
+          signingKey: { keyId: pack.signature.keyId, publicKeyPem: pack.signature.publicKeyPem }
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
     const zipFiles = [
       ...pack.files.map((file) => ({ name: file.name, bytes: file.bytes })),
-      { name: "manifest.json", bytes: Buffer.from(JSON.stringify(pack.manifest, null, 2) + "\n", "utf8") },
-      { name: "manifest.sig.json", bytes: Buffer.from(JSON.stringify(pack.signature, null, 2) + "\n", "utf8") }
+      { name: "manifest.json", bytes: manifestBytes },
+      { name: "manifest.sig.json", bytes: sigBytes },
+      { name: "verification.json", bytes: verificationBytes }
     ];
 
     const { zipPath, cleanup } = await createZipFromFiles(zipFiles);
 
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", 'attachment; filename="pbi-receipts-export.zip"');
+    const filename = `pbi-receipts-export-${new Date().toISOString().slice(0, 10)}.zip`;
 
-    res.download(zipPath, "pbi-receipts-export.zip", async (err) => {
-      await cleanup();
-      if (err) {
-        logger.error({ err }, "export_zip_send_failed");
-      }
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store");
+
+    res.download(zipPath, filename, (err) => {
+      void (async () => {
+        try {
+          await cleanup();
+        } catch (e) {
+          logger.warn({ err: e }, "export_zip_cleanup_failed");
+        }
+        if (err) {
+          logger.error({ err }, "export_zip_send_failed");
+        }
+      })();
     });
   })
 );
 
+// -----------------------------------------------------------------------------
+// Receipt fetch by id
+// -----------------------------------------------------------------------------
 pbiRouter.get(
   "/receipts/:id",
   requireScope("pbi.read_receipts"),
@@ -548,18 +602,21 @@ pbiRouter.get(
     );
 
     const evidence = buildEvidenceMetadata(evidenceParams(traceId));
-    const challenge = challengeRow.rowCount
-      ? withEvidenceMetadata(
-          {
-            id: receipt.challengeId,
-            purpose: challengeRow.rows[0]?.purpose as string,
-            actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
-            expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
-            usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
-          },
-          evidence
-        )
-      : null;
+    const row0 = challengeRow.rows[0] as unknown;
+
+    const challenge =
+      challengeRow.rowCount && typeof row0 === "object" && row0 !== null
+        ? withEvidenceMetadata(
+            {
+              id: receipt.challengeId,
+              purpose: String((row0 as { purpose?: unknown }).purpose ?? ""),
+              actionHashHex: String((row0 as { action_hash_hex?: unknown }).action_hash_hex ?? ""),
+              expiresAtIso: isoFromDb((row0 as { expires_at?: unknown }).expires_at),
+              usedAtIso: (row0 as { used_at?: unknown }).used_at ? isoFromDb((row0 as { used_at?: unknown }).used_at) : null
+            },
+            evidence
+          )
+        : null;
 
     res.json({
       receipt: withEvidenceMetadata(
@@ -577,11 +634,15 @@ pbiRouter.get(
   })
 );
 
+// -----------------------------------------------------------------------------
+// Receipt hash verify (lightweight)
+// -----------------------------------------------------------------------------
 pbiRouter.post(
   "/receipts/verify",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
+
     const Body = z.object({
       receiptId: z.string().uuid(),
       receiptHashHex: z.string().min(1)
@@ -618,15 +679,18 @@ pbiRouter.post(
   })
 );
 
+// -----------------------------------------------------------------------------
+// Receipts list (cursor pagination)
+// -----------------------------------------------------------------------------
 pbiRouter.get(
   "/receipts",
   requireScope("pbi.read_receipts"),
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
     const traceId = (req as AuthedRequest & { requestId?: string }).requestId;
-    const parsed = ReceiptListQuery.safeParse(req.query ?? {});
 
-    if (parsed && !parsed.success) {
+    const parsed = ReceiptListQuery.safeParse(req.query ?? {});
+    if (!parsed.success) {
       res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
       return;
     }
@@ -652,21 +716,22 @@ pbiRouter.get(
 
     const rows = await pool.query(text, values);
     const evidence = buildEvidenceMetadata(evidenceParams(traceId));
+
     const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
-      const challengeRowId = row.challenge_row_id as string | null;
-      const challenge =
-        challengeRowId !== null
-          ? withEvidenceMetadata(
-              {
-                id: String(row.challenge_id),
-                purpose: String(row.purpose),
-                actionHashHex: String(row.action_hash_hex),
-                expiresAtIso: new Date(row.expires_at as string).toISOString(),
-                usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
-              },
-              evidence
-            )
-          : null;
+      const hasChallenge = (row.challenge_row_id as string | null) !== null;
+
+      const challenge = hasChallenge
+        ? withEvidenceMetadata(
+            {
+              id: String(row.challenge_id),
+              purpose: String(row.purpose),
+              actionHashHex: String(row.action_hash_hex),
+              expiresAtIso: isoFromDb(row.expires_at),
+              usedAtIso: row.used_at ? isoFromDb(row.used_at) : null
+            },
+            evidence
+          )
+        : null;
 
       return {
         receipt: withEvidenceMetadata(
@@ -675,7 +740,7 @@ pbiRouter.get(
             challengeId: String(row.challenge_id),
             receiptHashHex: String(row.receipt_hash_hex),
             decision: String(row.decision),
-            createdAt: new Date(row.created_at as string).toISOString()
+            createdAt: isoFromDb(row.created_at)
           },
           evidence
         ),
@@ -684,9 +749,7 @@ pbiRouter.get(
     });
 
     const last = receipts.at(-1);
-    const nextCursor = last
-      ? encodeReceiptCursor({ createdAt: new Date(last.receipt.createdAt), id: last.receipt.id })
-      : null;
+    const nextCursor = last ? encodeReceiptCursor({ createdAt: new Date(last.receipt.createdAt), id: last.receipt.id }) : null;
 
     res.json({ receipts, nextCursor });
   })

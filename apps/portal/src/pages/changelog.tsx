@@ -13,9 +13,9 @@ type AuthState = "unknown" | "logged_out" | "logged_in";
 type ChangelogEntry = {
   version: string;
   title: string;
-  // optional; keep backward compatible with current renderer
   dateISO?: string; // "2026-01-19"
   bullets: string[];
+  tags?: string[]; // optional badges for scanning
 };
 
 export default function ChangelogPage() {
@@ -40,58 +40,78 @@ export default function ChangelogPage() {
   const pageUrl = useMemo(() => `${SITE_URL}/changelog`, []);
   const ogImage = `${SITE_URL}/pbi_1.png`;
 
-  // NOTE: newest first (production expectation for changelog)
+  // Newest first (enterprise expectation)
   const entries: ChangelogEntry[] = [
+    {
+      version: "v1.3.0",
+      title: "Production hardening: resilient webhooks, deterministic exports, safer ops",
+      dateISO: "2026-01-21",
+      tags: ["Reliability", "Security", "Ops"],
+      bullets: [
+        "Webhook delivery worker hardened: multi-instance safe claiming, graceful DB failure handling, and no-crash interval execution.",
+        "Webhook deliveries now use an explicit processing state with stale-claim reclaim to prevent stuck jobs after restarts.",
+        "Webhook HTTP delivery adds a strict timeout (AbortController) and preserves exponential backoff retry semantics.",
+        "Export packs upgraded for audit correctness: deterministic receipts.ndjson and canonical manifest.json bytes aligned with the signature model.",
+        "Export signing now includes a stable keyId derived from the public signing key fingerprint to support pinning and rotation workflows.",
+        "Export ZIP creation hardened: sanitized entry names, clearer failures when zip tooling is missing, and guaranteed temp cleanup.",
+        "Postgres pool defaults made production-safe (remote SSL by default unless disabled, sane timeouts, and pool error handling).",
+        "Graceful shutdown: worker stop + HTTP server close + DB pool close for predictable deploy/restart behavior."
+      ]
+    },
     {
       version: "v1.2.0",
       title: "Enterprise WOW pack: webhook delivery, export packs, and key governance",
       dateISO: "2026-01-20",
+      tags: ["Enterprise", "Compliance", "Integrations"],
       bullets: [
         "Receipts listing upgraded with time windows, explicit ordering, opaque cursors, and higher limits (max 500).",
         "New export endpoint: GET /v1/pbi/receipts/export generates a signed, offline-verifiable zip pack (manifest + hashes + signatures).",
         "Portal webhooks: create/list/update/delete endpoints for receipt.created events, with HMAC signatures + retry semantics.",
         "Receipt and challenge payloads enriched with policy metadata, verifier context, and trace identifiers where available.",
         "API key governance upgrades: rotation endpoint, last-used fields, and optional per-key scopes (export requires pbi.export).",
-        "OpenAPI and portal docs refreshed to document cursor semantics, webhooks, export pack format, and key rotation.",
-      ],
+        "OpenAPI and portal docs refreshed to document cursor semantics, webhooks, export pack format, and key rotation."
+      ]
     },
     {
       version: "v1.1.0",
       title: "Audit-friendly receipts listing + richer receipt context",
       dateISO: "2026-01-18",
+      tags: ["Audit", "Reporting"],
       bullets: [
         "New endpoint: GET /v1/pbi/receipts — customer-facing receipts listing designed for audit/export workflows.",
         "Cursor-based pagination added for receipt listings (nextCursor).",
         "Receipt listing supports filters: actionHashHex, challengeId, purpose, decision, limit.",
         "Each receipts list item returns receipt + associated challenge metadata (challenge context included when available).",
         "Receipt detail endpoints now include an embedded challenge object when available:",
-        "• GET /v1/pbi/challenges/{challengeId}/receipt",
-        "• GET /v1/pbi/receipts/{receiptId}",
+        "GET /v1/pbi/challenges/{challengeId}/receipt",
+        "GET /v1/pbi/receipts/{receiptId}",
         "OpenAPI updated to document receipts listing, combined receipt+challenge schemas, metering fields, and expanded error coverage (invalid requests, quota, unknown challenge IDs).",
         "README updated to include the receipts listing endpoint in the core API surface.",
         "Portal homepage updated: API Docs card now surfaces receipts endpoints for customer visibility.",
         "Internal: strengthened typing around receipt/challenge date handling to prevent invalid date parsing (no customer-facing behavior change).",
-        "Backward compatible: no breaking changes; existing integrations continue to work as-is.",
-      ],
+        "Backward compatible: no breaking changes; existing integrations continue to work as-is."
+      ]
     },
     {
       version: "v1.0.0",
       title: "Initial public release",
       dateISO: "2026-01-15",
+      tags: ["Foundation"],
       bullets: [
-        "Presence-bound challenge → UP+UV verify → receipt model",
-        "Action-hash binding and non-replayable challenge semantics",
-        "Portal billing + API keys + usage metering",
-        "Optional portable proof export model for audit workflows",
-      ],
-    },
+        "Presence-bound challenge → UP+UV verify → receipt model.",
+        "Action-hash binding and non-replayable challenge semantics.",
+        "Portal billing + API keys + usage metering.",
+        "Optional portable proof export model for audit workflows."
+      ]
+    }
   ];
 
   function fmtDateLabel(iso: string | undefined): string {
     if (!iso) return "";
-    // Keep it deterministic + safe: if parsing fails, fall back to raw ISO.
     const d = new Date(iso);
-    return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" }) : iso;
+    return Number.isFinite(d.getTime())
+      ? d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" })
+      : iso;
   }
 
   return (
@@ -134,8 +154,8 @@ export default function ChangelogPage() {
                   </h1>
 
                   <p className="pbi-lead">
-                    Enterprises integrate primitives only when changes are predictable. This page explains versioning and
-                    compatibility expectations, plus product changes.
+                    Enterprise systems integrate only when change is predictable. This page documents compatibility
+                    discipline and high-signal product updates.
                   </p>
 
                   <div className="pbi-ctaRow">
@@ -165,14 +185,14 @@ export default function ChangelogPage() {
 
                   <div className="pbi-sideList">
                     <Bullet>Stable /v1 endpoints</Bullet>
-                    <Bullet>Breaking changes gated by version</Bullet>
-                    <Bullet>Semantics documented in API reference</Bullet>
+                    <Bullet>Additive changes by default</Bullet>
+                    <Bullet>Breaking changes only via new version</Bullet>
                   </div>
 
                   <pre className="pbi-code">{`Compatibility:
 - /v1 contracts remain stable
-- changes are additive when possible
-- breaking changes require a new version`}</pre>
+- additive changes whenever possible
+- breaking changes require a new version path`}</pre>
                 </aside>
               </div>
             </section>
@@ -181,19 +201,19 @@ export default function ChangelogPage() {
               <SectionHead
                 kicker="Release policy"
                 title="Compatibility expectations"
-                body="Written for enterprise engineering and security review teams."
+                body="Written for enterprise engineering, security, risk, and compliance review teams."
               />
 
               <div style={{ display: "grid", gap: 10 }}>
                 <ProofRow k="Versioned API" v="Major behavioral changes require a versioned endpoint path (e.g., /v2)." />
-                <ProofRow k="Additive changes first" v="New fields are added without breaking existing clients wherever possible." />
+                <ProofRow k="Additive first" v="Fields and endpoints are introduced in a backward-compatible way whenever possible." />
                 <ProofRow
                   k="Explicit semantics"
-                  v="Decision values, enforcement rules, and replay constraints are documented in the API reference."
+                  v="Decision values, enforcement rules, replay constraints, and signature formats are documented in the API reference."
                 />
                 <ProofRow
-                  k="Migration guidance"
-                  v="When versions change, migration notes describe diffs and recommended rollout sequencing."
+                  k="Operational readiness"
+                  v="Retries, timeouts, and export verification formats are designed to satisfy audit and incident workflows."
                 />
               </div>
             </section>
@@ -212,7 +232,7 @@ export default function ChangelogPage() {
                           alignItems: "baseline",
                           justifyContent: "space-between",
                           gap: 10,
-                          flexWrap: "wrap",
+                          flexWrap: "wrap"
                         }}
                       >
                         <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
@@ -223,12 +243,21 @@ export default function ChangelogPage() {
                             </span>
                           ) : null}
                         </div>
-                        <div className="pbi-sideTag">Release</div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          {Array.isArray(e.tags) &&
+                            e.tags.map((t) => (
+                              <span key={t} className="pbi-sideTag" style={{ fontSize: 12 }}>
+                                {t}
+                              </span>
+                            ))}
+                          <div className="pbi-sideTag">Release</div>
+                        </div>
                       </div>
 
                       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                         {e.bullets.map((b) => (
-                          <div key={b} className="pbi-bullet" style={{ color: "rgba(255,255,255,.82)" }}>
+                          <div key={`${e.version}:${b}`} className="pbi-bullet" style={{ color: "rgba(255,255,255,.82)" }}>
                             <span className="pbi-bulletDot">•</span>
                             <span>{b}</span>
                           </div>
@@ -242,8 +271,8 @@ export default function ChangelogPage() {
               <div className="pbi-card" style={{ marginTop: 14 }}>
                 <div className="pbi-cardTitle">Enterprise change review</div>
                 <div className="pbi-cardBody" style={{ marginTop: 6 }}>
-                  Enterprises can request change review expectations, environment separation guidance, and rollout
-                  sequencing via <a href="/enterprise">/enterprise</a>.
+                  Enterprises can request change review expectations, environment separation guidance, and rollout sequencing via{" "}
+                  <a href="/enterprise">/enterprise</a>.
                 </div>
               </div>
             </section>
@@ -259,7 +288,13 @@ export default function ChangelogPage() {
 function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
   return (
     <header className="pbi-topbar">
-      <div className="pbi-brand" role="button" tabIndex={0} onClick={onHome} onKeyDown={(e) => (e.key === "Enter" ? onHome() : null)}>
+      <div
+        className="pbi-brand"
+        role="button"
+        tabIndex={0}
+        onClick={onHome}
+        onKeyDown={(e) => (e.key === "Enter" ? onHome() : null)}
+      >
         <div className="pbi-mark" aria-hidden>
           <span className="pbi-markDot" />
         </div>

@@ -4,7 +4,7 @@ import { pool } from "../db/pool.js";
 export type WebhookEvent = "receipt.created";
 
 export type WebhookPayload = {
-  id: string;
+  id: string; // delivery/event id (we set this per-endpoint delivery)
   type: WebhookEvent;
   createdAt: string;
   data: {
@@ -13,12 +13,26 @@ export type WebhookPayload = {
   };
 };
 
+type EndpointRow = { id: string };
+
+function isEndpointRow(x: unknown): x is EndpointRow {
+  return typeof x === "object" && x !== null && "id" in x && typeof (x as { id: unknown }).id === "string";
+}
+
+/**
+ * Enqueue webhook deliveries for receipt.created.
+ *
+ * IMPORTANT:
+ * - We generate a unique deliveryId per endpoint delivery.
+ * - We stamp payload.id = deliveryId and payload.createdAt = now for consistency with headers.
+ * - We write status='pending' explicitly (even though schema default exists) to keep behavior stable.
+ */
 export async function enqueueReceiptCreated(
   apiKeyId: string,
   receiptId: string,
   payload: WebhookPayload
 ): Promise<number> {
-  const endpoints = await pool.query(
+  const endpointsRes = await pool.query(
     `SELECT id
      FROM webhook_endpoints
      WHERE api_key_id=$1
@@ -27,20 +41,45 @@ export async function enqueueReceiptCreated(
     [apiKeyId]
   );
 
-  if (endpoints.rowCount === 0) return 0;
+  const rowsUnknown = endpointsRes.rows as unknown;
+  const endpoints: EndpointRow[] = Array.isArray(rowsUnknown) ? rowsUnknown.filter(isEndpointRow) : [];
 
-  const deliveryIds = (endpoints.rows as Array<{ id: string }>).map((row) => row.id);
-  let inserted = 0;
+  if (endpoints.length === 0) return 0;
 
-  for (const endpointId of deliveryIds) {
-    const deliveryId = randomUUID();
-    await pool.query(
-      `INSERT INTO webhook_deliveries (id, endpoint_id, event, receipt_id, payload_json, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending')`,
-      [deliveryId, endpointId, "receipt.created", receiptId, payload]
-    );
-    inserted += 1;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    let inserted = 0;
+
+    for (const ep of endpoints) {
+      const deliveryId = randomUUID();
+
+      const deliveryPayload: WebhookPayload = {
+        ...payload,
+        id: deliveryId,
+        createdAt: new Date().toISOString()
+      };
+
+      await client.query(
+        `INSERT INTO webhook_deliveries (id, endpoint_id, event, receipt_id, payload_json, status)
+         VALUES ($1, $2, $3, $4, $5, 'pending')`,
+        [deliveryId, ep.id, "receipt.created", receiptId, deliveryPayload]
+      );
+
+      inserted += 1;
+    }
+
+    await client.query("COMMIT");
+    return inserted;
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore rollback failure
+    }
+    throw err;
+  } finally {
+    client.release();
   }
-
-  return inserted;
 }
