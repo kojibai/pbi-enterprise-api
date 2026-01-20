@@ -12,18 +12,23 @@ const isRecord = (value: unknown): value is Record<string, JsonValue> =>
   typeof value === "object" && value !== null;
 
 export const isErrorResponse = (value: unknown): value is ErrorResponse => {
-  if (!isRecord(value)) {
-    return false;
-  }
+  if (!isRecord(value)) return false;
   return typeof value.error === "string";
 };
 
 export class PresenceBoundError extends Error {
   readonly status: number;
-  readonly requestId?: string;
-  readonly details?: ErrorResponse;
+  readonly requestId: string | undefined;
+  readonly details: ErrorResponse | undefined;
 
-  constructor(message: string, options: { status: number; requestId?: string; details?: ErrorResponse }) {
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      requestId?: string | undefined;
+      details?: ErrorResponse | undefined;
+    }
+  ) {
     super(message);
     this.name = "PresenceBoundError";
     this.status = options.status;
@@ -34,9 +39,8 @@ export class PresenceBoundError extends Error {
 
 export const parseJson = async (response: Response): Promise<unknown> => {
   const text = await response.text();
-  if (!text) {
-    return null;
-  }
+  if (!text) return null;
+
   try {
     return JSON.parse(text) as JsonValue;
   } catch {
