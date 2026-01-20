@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AuthedRequest } from "../middleware/apiKeyAuth.js";
 import { createChallenge, getChallenge, markChallengeUsed } from "../pbi/challengeStore.js";
 import { verifyWebAuthnAssertion } from "../pbi/verify.js";
-import { getReceiptById, mintReceipt, storeReceipt } from "../pbi/receipt.js";
+import { getReceiptByChallengeId, getReceiptById, mintReceipt, storeReceipt } from "../pbi/receipt.js";
 import { consumeQuotaUnit } from "../billing/quota.js";
 
 export const pbiRouter = Router();
@@ -189,6 +189,68 @@ pbiRouter.post(
 );
 
 pbiRouter.get(
+  "/challenges/:id",
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const challengeId = String(req.params.id ?? "").trim();
+
+    if (!challengeId) {
+      res.status(400).json({ error: "invalid_challenge_id" });
+      return;
+    }
+
+    const stored = await getChallenge(challengeId);
+    if (!stored || stored.apiKeyId !== apiKey.id) {
+      res.status(404).json({ error: "challenge_not_found" });
+      return;
+    }
+
+    const now = new Date();
+    const status = stored.usedAt ? "used" : now > stored.expiresAt ? "expired" : "active";
+
+    res.json({
+      challenge: {
+        id: stored.id,
+        purpose: stored.purpose,
+        actionHashHex: stored.actionHashHex,
+        expiresAtIso: stored.expiresAt.toISOString(),
+        usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null,
+        status
+      }
+    });
+  })
+);
+
+pbiRouter.get(
+  "/challenges/:id/receipt",
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const challengeId = String(req.params.id ?? "").trim();
+
+    if (!challengeId) {
+      res.status(400).json({ error: "invalid_challenge_id" });
+      return;
+    }
+
+    const receipt = await getReceiptByChallengeId(apiKey.id, challengeId);
+    if (!receipt) {
+      res.status(404).json({ error: "receipt_not_found" });
+      return;
+    }
+
+    res.json({
+      receipt: {
+        id: receipt.id,
+        challengeId: receipt.challengeId,
+        receiptHashHex: receipt.receiptHashHex,
+        decision: receipt.decision,
+        createdAt: receipt.createdAt
+      }
+    });
+  })
+);
+
+pbiRouter.get(
   "/receipts/:id",
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const apiKey = req.apiKey!;
@@ -210,6 +272,42 @@ pbiRouter.get(
         id: receipt.id,
         challengeId: receipt.challengeId,
         receiptHashHex: receipt.receiptHashHex,
+        decision: receipt.decision,
+        createdAt: receipt.createdAt
+      }
+    });
+  })
+);
+
+pbiRouter.post(
+  "/receipts/verify",
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const Body = z.object({
+      receiptId: z.string().uuid(),
+      receiptHashHex: z.string().min(1)
+    });
+
+    const parsed = Body.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
+      return;
+    }
+
+    const { receiptId, receiptHashHex } = parsed.data;
+    const receipt = await getReceiptById(apiKey.id, receiptId);
+    if (!receipt) {
+      res.status(404).json({ error: "receipt_not_found" });
+      return;
+    }
+
+    const ok = receipt.receiptHashHex === receiptHashHex;
+
+    res.json({
+      ok,
+      receipt: {
+        id: receipt.id,
+        challengeId: receipt.challengeId,
         decision: receipt.decision,
         createdAt: receipt.createdAt
       }

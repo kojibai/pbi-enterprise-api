@@ -69,3 +69,34 @@ export async function getReceiptById(apiKeyId: string, receiptId: string): Promi
     createdAt: row.created_at
   };
 }
+
+export async function getReceiptByChallengeId(apiKeyId: string, challengeId: string): Promise<StoredReceipt | null> {
+  const res = await pool.query(
+    `SELECT id, api_key_id, challenge_id, receipt_hash_hex, decision, created_at
+     FROM pbi_receipts
+     WHERE challenge_id=$1 AND api_key_id=$2
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [challengeId, apiKeyId]
+  );
+
+  if (res.rowCount === 0) return null;
+
+  const row = res.rows[0] as {
+    id: string;
+    api_key_id: string;
+    challenge_id: string;
+    receipt_hash_hex: string;
+    decision: ReceiptDecision;
+    created_at: string;
+  };
+
+  return {
+    id: row.id,
+    apiKeyId: row.api_key_id,
+    challengeId: row.challenge_id,
+    receiptHashHex: row.receipt_hash_hex,
+    decision: row.decision,
+    createdAt: row.created_at
+  };
+}
