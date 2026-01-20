@@ -3,19 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npm run build --workspace packages/presencebound-sdk && tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "migrate": "tsx scripts/run-migrations.ts",
     "close-month": "tsx scripts/close-month.ts",
     "seed-enterprise-key": "tsx scripts/seed-enterprise-key.ts",
-    "provision-key": "tsx scripts/provision-api-key.ts",
-    "test": "npm run test --workspace packages/presencebound-sdk",
-    "typecheck": "npm run typecheck --workspace packages/presencebound-sdk"
+    "provision-key": "tsx scripts/provision-api-key.ts"
   },
   "dependencies": {
     "archiver": "^7.0.1",
