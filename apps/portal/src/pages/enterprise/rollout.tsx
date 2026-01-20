@@ -9,6 +9,13 @@ const DEMO_URL = "https://demo.kojib.com";
 const TOOL_URL = "https://tool.kojib.com";
 const SITE_URL = "https://pbi.kojib.com";
 
+const SDK_PACKAGE = "presencebound-sdk";
+const SDK_INSTALL = `npm i ${SDK_PACKAGE}`;
+const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
+const SDK_EXAMPLE_URL =
+  "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
+const SDK_DEV_URL = "/developers";
+
 type AuthState = "unknown" | "logged_out" | "logged_in";
 
 type Step = {
@@ -17,6 +24,39 @@ type Step = {
   goal: string;
   bullets: string[];
 };
+
+function buildSdkSnippet(baseUrl: string): string {
+  return `import { PresenceBound, PresenceBoundError } from "${SDK_PACKAGE}";
+
+const client = new PresenceBound({
+  apiKey: process.env.PRESENCEBOUND_API_KEY ?? "",
+  baseUrl: "${baseUrl}",
+  timeoutMs: 15000,
+  userAgent: "your-app/1.0.0"
+});
+
+async function run() {
+  const challenge = await client.createChallenge({
+    actionHashHex: "a".repeat(64),
+    purpose: "ACTION_COMMIT"
+  });
+
+  console.log("challengeId:", challenge.data.id, "requestId:", challenge.requestId);
+
+  // Auto-pagination
+  for await (const item of client.iterateReceipts({ limit: 100, order: "desc" })) {
+    console.log(item.receipt.id, item.receipt.decision);
+  }
+}
+
+run().catch((err) => {
+  if (err instanceof PresenceBoundError) {
+    console.error({ status: err.status, requestId: err.requestId, details: err.details });
+    process.exit(1);
+  }
+  throw err;
+});`;
+}
 
 export default function RolloutGuidePage() {
   const router = useRouter();
@@ -42,6 +82,10 @@ export default function RolloutGuidePage() {
   const pageUrl = useMemo(() => `${SITE_URL}/enterprise/rollout`, []);
   const ogImage = `${SITE_URL}/pbi_1.png`;
 
+  // Canonical public API base. Keep this stable for copy/paste.
+  const effectiveBaseUrl = useMemo(() => "https://api.kojib.com", []);
+  const sdkSnippet = useMemo(() => buildSdkSnippet(effectiveBaseUrl), [effectiveBaseUrl]);
+
   const steps: Step[] = [
     {
       day: "Day 0",
@@ -49,7 +93,8 @@ export default function RolloutGuidePage() {
       goal: "First verified receipt",
       bullets: [
         "Create an API key in the Portal (shown once).",
-        "Run the ceremony end-to-end: challenge → verify → receipt.",
+        `Install the official SDK (${SDK_PACKAGE}) or integrate directly via OpenAPI.`,
+        "Run the ceremony end-to-end: challenge → WebAuthn assertion → verify → receipt.",
         "Confirm receipt retrieval works via receipts list/detail endpoints."
       ]
     },
@@ -60,7 +105,7 @@ export default function RolloutGuidePage() {
       bullets: [
         "Choose one critical action (password reset, payout change, admin escalation, large transfer).",
         "Compute a stable actionHashHex and require PBI_VERIFIED before commit.",
-        "Store receiptId on the action record for audit and dispute handling."
+        "Store receiptId on the action record for audit, disputes, and internal review."
       ]
     },
     {
@@ -113,7 +158,7 @@ export default function RolloutGuidePage() {
         <title>Enterprise Rollout Guide · PBI</title>
         <meta
           name="description"
-          content="A 1-page enterprise rollout guide for Presence-Bound Identity: Day 0 to Day 7 implementation, webhooks, exports, and governance."
+          content="A 1-page enterprise rollout guide for Presence-Bound Identity: Day 0 to Day 7 implementation, SDK quickstart, webhooks, exports, and governance."
         />
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index,follow" />
@@ -123,7 +168,10 @@ export default function RolloutGuidePage() {
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Kojib" />
         <meta property="og:title" content="Enterprise Rollout Guide · PBI" />
-        <meta property="og:description" content="Day 0 → Day 7 implementation plan: first receipt, gating, webhooks, exports, governance." />
+        <meta
+          property="og:description"
+          content="Day 0 → Day 7 implementation plan: first receipt, gating, SDK integration, webhooks, exports, governance."
+        />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
       </Head>
@@ -158,6 +206,12 @@ export default function RolloutGuidePage() {
                     <a className="pbi-btnGhost" href="/console">
                       Client portal
                     </a>
+                    <a className="pbi-btnGhost" href={SDK_DEV_URL}>
+                      Developers
+                    </a>
+                    <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      SDK
+                    </a>
                     <a className="pbi-btnGhost" href={DEMO_URL} target="_blank" rel="noreferrer">
                       Demo
                     </a>
@@ -180,6 +234,7 @@ export default function RolloutGuidePage() {
                     <Bullet>Gate one high-risk action</Bullet>
                     <Bullet>Real-time receipt stream (webhooks)</Bullet>
                     <Bullet>Offline-verifiable evidence exports</Bullet>
+                    <Bullet>SDK-first integration path</Bullet>
                   </div>
 
                   <pre className="pbi-code">{`Success criteria:
@@ -188,6 +243,77 @@ export default function RolloutGuidePage() {
 - exports archived + verifiable
 - scoped keys + rotation`}</pre>
                 </aside>
+              </div>
+            </section>
+
+            {/* NEW: Developer fast path (SDK) */}
+            <section className="pbi-section">
+              <SectionHead
+                kicker="Developer fast path"
+                title="Ship integration quickly with the official SDK"
+                body="For most teams, the fastest route to production is: SDK install → create challenge → WebAuthn ceremony → verify → persist receiptId."
+              />
+
+              <div style={{ display: "grid", gap: 10 }}>
+                <div className="pbi-card" style={{ padding: 14 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
+                      Install + minimal client
+                      <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,.58)" }}>Node 18+ · ESM + CJS</span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button className="pbi-btnGhost" type="button" onClick={() => void copy(SDK_INSTALL, "sdk:install")}>
+                        {copied === "sdk:install" ? "Copied" : "Copy install"}
+                      </button>
+                      <button className="pbi-btnGhost" type="button" onClick={() => void copy(sdkSnippet, "sdk:snippet")}>
+                        {copied === "sdk:snippet" ? "Copied" : "Copy snippet"}
+                      </button>
+                      <a className="pbi-btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                        npm →
+                      </a>
+                      <a className="pbi-btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                        Example →
+                      </a>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    <pre className="pbi-code" style={{ margin: 0 }}>
+{SDK_INSTALL}
+                    </pre>
+
+                    <pre className="pbi-code" style={{ margin: 0, maxHeight: 320, overflow: "auto" }}>
+{sdkSnippet}
+                    </pre>
+
+                    <div className="pbi-cardBody" style={{ marginTop: 2 }}>
+                      Use <code className="pbi-inlineCode">PRESENCEBOUND_API_KEY</code> in your environment. Persist{" "}
+                      <code className="pbi-inlineCode">receiptId</code> on the protected action record, and enforce the decision gate:{" "}
+                      <code className="pbi-inlineCode">PBI_VERIFIED</code> only.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pbi-card" style={{ padding: 14 }}>
+                  <div className="pbi-cardTitle">End-to-end ceremony example</div>
+                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                    The repo includes a complete working demo (Express server + browser page) that performs WebAuthn assertion and verifies via PBI.
+                  </div>
+                  <pre className="pbi-code" style={{ marginTop: 10 }}>{`Path:
+./packages/presencebound-sdk/examples/node-sdk/`}</pre>
+                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a className="pbi-btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                      Open example →
+                    </a>
+                    <a className="pbi-btnGhost" href={SDK_DEV_URL}>
+                      Developers →
+                    </a>
+                    <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
+                      API docs →
+                    </a>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -201,7 +327,15 @@ export default function RolloutGuidePage() {
               <div style={{ display: "grid", gap: 10 }}>
                 {steps.map((s) => (
                   <div key={s.day} className="pbi-card" style={{ padding: 14 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        flexWrap: "wrap"
+                      }}
+                    >
                       <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
                         {s.day} · {s.goal}
                         <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,.58)" }}>{s.time}</span>
@@ -243,6 +377,11 @@ export default function RolloutGuidePage() {
 - amount + currency (if applicable)
 - risk context (optional)
 - timestamp bucket (optional)`}</pre>
+
+                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                    Senior engineering note: treat hashing as a contract. Canonicalize input ordering and encoding, and version the action schema when
+                    your action model evolves.
+                  </div>
                 </div>
 
                 <div className="pbi-card" style={{ padding: 14 }}>
@@ -283,6 +422,14 @@ GET /v1/portal/receipts/export
 
 API export:
 GET /v1/pbi/receipts/export`}</pre>
+                </div>
+
+                <div className="pbi-card" style={{ padding: 14 }}>
+                  <div className="pbi-cardTitle">WebAuthn production note</div>
+                  <div className="pbi-cardBody" style={{ marginTop: 8 }}>
+                    WebAuthn ceremonies require HTTPS in production. Most browsers allow localhost during development. Ensure your RP ID and
+                    credential management follow your security team’s policy.
+                  </div>
                 </div>
               </div>
             </section>

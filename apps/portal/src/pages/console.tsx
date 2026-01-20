@@ -30,6 +30,13 @@ const ROLLOUT_URL = "/enterprise/rollout";
 const WEBHOOKS_URL = "/console/webhooks";
 const EXPORTS_URL = "/console/exports";
 
+const SDK_PACKAGE = "presencebound-sdk";
+const SDK_INSTALL = `npm i ${SDK_PACKAGE}`;
+const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
+const SDK_EXAMPLE_URL =
+  "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
+const SDK_DEV_URL = "/developers";
+
 function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
   const s = String(raw ?? "").toLowerCase().trim();
   if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
@@ -53,6 +60,39 @@ function latestMonthKey(rows: UsageRow[]): string | null {
   if (!ks.length) return null;
   ks.sort();
   return ks[ks.length - 1] ?? null;
+}
+
+function buildSdkSnippet(baseUrl: string): string {
+  return `import { PresenceBound, PresenceBoundError } from "${SDK_PACKAGE}";
+
+const client = new PresenceBound({
+  apiKey: process.env.PRESENCEBOUND_API_KEY ?? "",
+  baseUrl: "${baseUrl}",
+  timeoutMs: 15000,
+  userAgent: "your-app/1.0.0"
+});
+
+async function run() {
+  const challenge = await client.createChallenge({
+    actionHashHex: "a".repeat(64),
+    purpose: "ACTION_COMMIT"
+  });
+
+  console.log("challengeId:", challenge.data.id, "requestId:", challenge.requestId);
+
+  // Auto-pagination
+  for await (const item of client.iterateReceipts({ limit: 100, order: "desc" })) {
+    console.log(item.receipt.id, item.receipt.decision);
+  }
+}
+
+run().catch((err) => {
+  if (err instanceof PresenceBoundError) {
+    console.error({ status: err.status, requestId: err.requestId, details: err.details });
+    process.exit(1);
+  }
+  throw err;
+});`;
 }
 
 function EmailText({ email }: { email: string }) {
@@ -82,6 +122,8 @@ export default function Home() {
   const [busy, setBusy] = useState<string>("");
   const [err, setErr] = useState<string>("");
 
+  const [copied, setCopied] = useState<string>("");
+
   const priceIds = useMemo(
     () => ({
       starter: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER ?? "",
@@ -90,6 +132,10 @@ export default function Home() {
     }),
     []
   );
+
+  const effectiveBaseUrl = useMemo(() => "https://api.kojib.com", []);
+
+  const sdkSnippet = useMemo(() => buildSdkSnippet(effectiveBaseUrl), [effectiveBaseUrl]);
 
   async function load(): Promise<void> {
     const m = await apiJson<Me>("/v1/portal/me");
@@ -109,9 +155,13 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function copy(text: string) {
+  function copy(text: string, kind?: string) {
     try {
       void navigator.clipboard.writeText(text);
+      if (kind) {
+        setCopied(kind);
+        window.setTimeout(() => setCopied(""), 900);
+      }
     } catch {}
   }
 
@@ -242,6 +292,14 @@ export default function Home() {
               Rollout Guide
             </a>
 
+            <a className="navLink" href={SDK_DEV_URL}>
+              Developers
+            </a>
+
+            <a className="navLink" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+              SDK
+            </a>
+
             <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
               Demo
             </a>
@@ -303,7 +361,8 @@ export default function Home() {
                   <div className="pendingCallout" role="status">
                     <div className="pendingTitle">Pending billing activation</div>
                     <div className="pendingBody">
-                      Your account is in <b>pending</b> state. Activate billing to enable plan enforcement and unlock enterprise controls.
+                      Your account is in <b>pending</b> state. Activate billing to enable plan enforcement and unlock
+                      enterprise controls.
                     </div>
                     <div className="pendingBtns">
                       <a className="btnPrimary" href="/billing">
@@ -347,19 +406,74 @@ export default function Home() {
                         <div className="secretTitle">New API key (shown once)</div>
                         <div className="secretSub">Copy it now. You won’t be able to view it again.</div>
                       </div>
-                      <button className="btnGhost" onClick={() => copy(rawKey)} type="button">
-                        Copy
+                      <button className="btnGhost" onClick={() => copy(rawKey, "raw")} type="button">
+                        {copied === "raw" ? "Copied" : "Copy"}
                       </button>
                     </div>
 
                     <pre className="secretCode">{rawKey}</pre>
 
                     <div className="secretFoot">
-                      Store as <code className="inlineCode">PBI_API_KEY</code> and send{" "}
+                      Store as <code className="inlineCode">PRESENCEBOUND_API_KEY</code> and send{" "}
                       <code className="inlineCode">Authorization: Bearer &lt;key&gt;</code>.
                     </div>
                   </div>
                 ) : null}
+
+                {/* NEW: Developer quickstart (SDK) */}
+                <div className="devBox" role="region" aria-label="Developer quickstart">
+                  <div className="devTop">
+                    <div>
+                      <div className="devKicker">Developers</div>
+                      <div className="devTitle">Official SDK quickstart</div>
+                      <div className="devSub">
+                        Node 18+ · ESM + CJS · typed errors with requestId correlation · receipts iterator.
+                      </div>
+                    </div>
+
+                    <div className="devActions">
+                      <button className="btnGhost" onClick={() => copy(SDK_INSTALL, "install")} type="button">
+                        {copied === "install" ? "Copied" : "Copy install"}
+                      </button>
+                      <button className="btnGhost" onClick={() => copy(sdkSnippet, "snippet")} type="button">
+                        {copied === "snippet" ? "Copied" : "Copy snippet"}
+                      </button>
+                      <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                        npm →
+                      </a>
+                      <a className="btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                        Example →
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="devGrid">
+                    <div className="devPane">
+                      <div className="devPaneTitle">Install</div>
+                      <pre className="devCode">{SDK_INSTALL}</pre>
+                      <div className="devHint">
+                        Configure <code className="inlineCode">PRESENCEBOUND_API_KEY</code> in your environment.
+                      </div>
+                    </div>
+
+                    <div className="devPane devPaneWide">
+                      <div className="devPaneTitle">Minimal client</div>
+                      <pre className="devCode devCodeTall">{sdkSnippet}</pre>
+                    </div>
+                  </div>
+
+                  <div className="devFoot">
+                    Need a full ceremony demo? Open the end-to-end WebAuthn example:{" "}
+                    <a href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                      node-sdk
+                    </a>
+                    . Prefer docs-first? See{" "}
+                    <a href={SDK_DEV_URL} target="_blank" rel="noreferrer">
+                      /developers
+                    </a>
+                    .
+                  </div>
+                </div>
 
                 {/* MOBILE: one-screen “app” dashboard actions */}
                 <div className="mobileQuick">
@@ -369,6 +483,18 @@ export default function Home() {
                     <div className="hint">Day 0 → Day 7 implementation plan.</div>
                     <a className="linkBtnPrimary" href={ROLLOUT_URL}>
                       Open →
+                    </a>
+                  </div>
+
+                  <div className="mobileCard">
+                    <div className="kicker">Developers</div>
+                    <div className="mobileTitle">Official SDK</div>
+                    <div className="hint">Install + quickstart + typed errors.</div>
+                    <a className="linkBtnPrimary" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      npm →
+                    </a>
+                    <a className="linkBtn" href={SDK_DEV_URL}>
+                      Docs →
                     </a>
                   </div>
 
@@ -419,10 +545,20 @@ export default function Home() {
                     </a>
 
                     <div className="inlinePlans">
-                      <button className="miniBtn" disabled={!!busy || !priceIds.starter} onClick={() => checkout("starter")} type="button">
+                      <button
+                        className="miniBtn"
+                        disabled={!!busy || !priceIds.starter}
+                        onClick={() => checkout("starter")}
+                        type="button"
+                      >
                         Starter
                       </button>
-                      <button className="miniBtn" disabled={!!busy || !priceIds.pro} onClick={() => checkout("pro")} type="button">
+                      <button
+                        className="miniBtn"
+                        disabled={!!busy || !priceIds.pro}
+                        onClick={() => checkout("pro")}
+                        type="button"
+                      >
                         Pro
                       </button>
                       <button
@@ -500,13 +636,28 @@ export default function Home() {
                   <div className="priceTitle">Plans</div>
 
                   <div className="planBtns">
-                    <button className="btnGhost" disabled={!!busy || !priceIds.starter} onClick={() => checkout("starter")} type="button">
+                    <button
+                      className="btnGhost"
+                      disabled={!!busy || !priceIds.starter}
+                      onClick={() => checkout("starter")}
+                      type="button"
+                    >
                       Starter {PLAN_PRICE.starter}/mo
                     </button>
-                    <button className="btnGhost" disabled={!!busy || !priceIds.pro} onClick={() => checkout("pro")} type="button">
+                    <button
+                      className="btnGhost"
+                      disabled={!!busy || !priceIds.pro}
+                      onClick={() => checkout("pro")}
+                      type="button"
+                    >
                       Pro {PLAN_PRICE.pro}/mo
                     </button>
-                    <button className="btnPrimary" disabled={!!busy || !priceIds.enterprise} onClick={() => checkout("enterprise")} type="button">
+                    <button
+                      className="btnPrimary"
+                      disabled={!!busy || !priceIds.enterprise}
+                      onClick={() => checkout("enterprise")}
+                      type="button"
+                    >
                       Scale {PLAN_PRICE.enterprise}/mo
                     </button>
                   </div>
@@ -524,6 +675,9 @@ export default function Home() {
                     </a>
                     <a className="btnGhost" href={ROLLOUT_URL}>
                       Rollout guide →
+                    </a>
+                    <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                      SDK →
                     </a>
                   </div>
 
@@ -544,6 +698,9 @@ export default function Home() {
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
               <a href={ROLLOUT_URL}>Rollout guide</a>
+              <a href={SDK_NPM_URL} target="_blank" rel="noreferrer">
+                SDK
+              </a>
             </div>
           </footer>
         </div>
@@ -882,6 +1039,87 @@ body{ margin:0; overflow-x:hidden; }
   background: rgba(255,255,255,.06);
 }
 
+/* NEW: Developer SDK block */
+.devBox{
+  margin-top: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(154,170,255,.22);
+  background: rgba(154,170,255,.07);
+  padding: 12px;
+  box-shadow: var(--shadow3);
+  position: relative;
+  overflow:hidden;
+}
+.devBox::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background:
+    radial-gradient(780px 220px at 12% 0%, rgba(154,170,255,.22), transparent 60%),
+    radial-gradient(680px 260px at 86% 10%, rgba(120,255,231,.14), transparent 62%);
+  filter: blur(16px);
+  opacity: .80;
+  pointer-events:none;
+}
+.devTop{
+  position:relative;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.devKicker{ font-size: 11px; color: rgba(255,255,255,.56); }
+.devTitle{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
+.devSub{ margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.74); line-height: 1.5; max-width: 62ch; }
+.devActions{ display:flex; gap: 8px; flex-wrap: wrap; align-items:center; }
+.devGrid{
+  position:relative;
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: 10px;
+}
+.devPane{
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  padding: 10px;
+  min-width:0;
+}
+.devPaneWide{ grid-column: 2 / 3; }
+.devPaneTitle{ font-weight: 950; font-size: 12px; color: rgba(255,255,255,.84); }
+.devCode{
+  margin-top: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.26);
+  padding: 10px;
+  overflow:auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255,255,255,.92);
+  max-width: 100%;
+}
+.devCodeTall{ max-height: 260px; }
+.devHint{ margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.74); line-height: 1.5; }
+.devFoot{
+  position:relative;
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,.74);
+  line-height: 1.55;
+}
+.devFoot a{ color: rgba(120,255,231,.92); text-decoration:none; font-weight: 900; }
+.devFoot a:hover{ text-decoration: underline; }
+
+@media (max-width: 980px){
+  .devGrid{ grid-template-columns: 1fr; }
+  .devPaneWide{ grid-column: auto; }
+  .devCodeTall{ max-height: 220px; }
+}
+
 /* Desktop aside */
 .side{
   border-radius: 22px;
@@ -1008,4 +1246,17 @@ body{ margin:0; overflow-x:hidden; }
 .footerLinks{ display:flex; gap: 12px; flex-wrap: wrap; }
 .footer a{ color: rgba(120,255,231,.9); text-decoration:none; }
 .footer a:hover{ text-decoration: underline; }
+
+/* Email pill */
+.emailRow{ margin-top: 10px; display:flex; align-items:center; gap: 10px; flex-wrap:wrap; }
+.emailPill{
+  display:inline-flex; align-items:center; gap:10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+}
+.emailPillDot{ width: 9px; height: 9px; border-radius:999px; background: rgba(154,170,255,.9); box-shadow: 0 0 0 5px rgba(154,170,255,.12); }
+.emailPillText{ font-size: 12px; color: rgba(255,255,255,.86); }
+.emailInline{ overflow-wrap:anywhere; }
 `;
