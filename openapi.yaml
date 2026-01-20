@@ -236,17 +236,6 @@ components:
             required: [id, month, status, totalCents, lineItems, createdAt]
       required: [invoices]
 
-    StripeCheckoutRequest:
-      type: object
-      properties:
-        priceId: { type: string }
-      required: [priceId]
-
-    StripeCheckoutResponse:
-      type: object
-      properties:
-        url: { type: string }
-      required: [url]
 
 security:
   - ApiKeyBearer: []
@@ -493,27 +482,4 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PortalInvoicesResponse" }
 
-  /v1/stripe/checkout:
-    post:
-      security: []
-      summary: Create a Stripe checkout session
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/StripeCheckoutRequest" }
-      responses:
-        "200":
-          description: Checkout created
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/StripeCheckoutResponse" }
-
-  /v1/stripe/webhook:
-    post:
-      security: []
-      summary: Stripe webhook endpoint
-      responses:
-        "200":
-          description: Accepted
               
