@@ -438,7 +438,7 @@ export default function Home() {
                     <div className="mobileTitle">SDK docs</div>
                     <div className="hint">Install + quickstart + errors + compatibility.</div>
                     <a className="linkBtnPrimary" href={SDK_PAGE_URL}>
-                      /sdk →
+                      SDK →
                     </a>
                     <a className="linkBtn" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                       npm →
