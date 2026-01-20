@@ -43,6 +43,21 @@ export default function ChangelogPage() {
   // Newest first (enterprise expectation)
   const entries: ChangelogEntry[] = [
     {
+      version: "v1.7.0",
+      title: "Official SDK launch + end-to-end integration example (Node/TS) + docs polish",
+      dateISO: "2026-01-21",
+      tags: ["SDK", "Developers", "Integrations", "Docs"],
+      bullets: [
+        "Official Node/TypeScript SDK now available on npm: presencebound-sdk@1.0.2 (ESM + CJS + .d.ts + sourcemaps).",
+        "SDK provides typed methods across core PBI + billing endpoints, including an async iterator for receipts pagination (iterateReceipts).",
+        "Strict runtime behavior: request timeouts via AbortController, query serialization that drops undefined, and exactOptionalPropertyTypes-safe typing.",
+        "Typed error surface (PresenceBoundError): status + optional requestId + optional structured ErrorResponse details for fast incident correlation.",
+        "End-to-end integration example added (WebAuthn → verify → receipt): ./packages/presencebound-sdk/examples/node-sdk (Express server + browser UI).",
+        "Root README upgraded for enterprise onboarding: SDK install/quickstart, compatibility matrix, example link, and operational notes.",
+        "Backward compatible: no breaking changes to /v1/pbi/* or billing endpoints; existing integrations continue to work unchanged."
+      ]
+    },
+    {
       version: "v1.6.0",
       title: "Console IA upgrade: dedicated Webhooks + Exports modules (clean hub + task pages)",
       dateISO: "2026-01-21",
