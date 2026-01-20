@@ -166,6 +166,10 @@ publicRouter.get("/", (_req, res) => {
           <div class="mono">Auth: Authorization: Bearer &lt;API_KEY&gt;
 POST /v1/pbi/challenge
 POST /v1/pbi/verify
+GET  /v1/pbi/challenges/&lt;challengeId&gt;
+GET  /v1/pbi/challenges/&lt;challengeId&gt;/receipt
+GET  /v1/pbi/receipts/&lt;receiptId&gt;
+POST /v1/pbi/receipts/verify
 GET  /v1/billing/usage
 GET  /v1/billing/invoices</div>
         </div>
