@@ -60,6 +60,7 @@ const VerifyReq = z.object({
     pubKeyPem: z.string().min(1)
   })
 });
+const ReceiptIdParam = z.string().uuid();
 
 pbiRouter.post(
   "/challenge",
@@ -256,12 +257,13 @@ pbiRouter.get(
     const apiKey = req.apiKey!;
     const receiptId = String(req.params.id ?? "").trim();
 
-    if (!receiptId) {
-      res.status(400).json({ error: "invalid_receipt_id" });
+    const parsedReceiptId = ReceiptIdParam.safeParse(receiptId);
+    if (!parsedReceiptId.success) {
+      res.status(400).json({ error: "invalid_receipt_id", issues: parsedReceiptId.error.issues });
       return;
     }
 
-    const receipt = await getReceiptById(apiKey.id, receiptId);
+    const receipt = await getReceiptById(apiKey.id, parsedReceiptId.data);
     if (!receipt) {
       res.status(404).json({ error: "receipt_not_found" });
       return;
