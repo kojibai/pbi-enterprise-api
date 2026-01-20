@@ -109,7 +109,7 @@ export default function WhyPage() {
               </a>
               {auth === "logged_in" ? (
                 <a className="pbi-navCta" href="/console">
-                  Console
+                  Dashboard
                 </a>
               ) : (
                 <a className="pbi-navCta" href="/#access">

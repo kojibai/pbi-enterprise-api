@@ -83,7 +83,7 @@ export default function DevelopersPage() {
 
                   <div className="pbi-ctaRow">
                     <a className="pbi-btnPrimary" href={auth === "logged_in" ? "/console" : "/#access"}>
-                      {auth === "logged_in" ? "Open console" : "Get access"} <span aria-hidden>→</span>
+                      {auth === "logged_in" ? "Open Dashboard" : "Get access"} <span aria-hidden>→</span>
                     </a>
                     <a className="pbi-btnGhost" href={API_DOCS} target="_blank" rel="noreferrer">
                       API reference
@@ -323,7 +323,7 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
         <a href="/status">Status</a>
         {auth === "logged_in" ? (
           <a className="pbi-navCta" href="/console">
-            Console
+            Dashboard
           </a>
         ) : (
           <a className="pbi-navCta" href="/#access">

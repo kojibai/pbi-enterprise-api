@@ -199,7 +199,7 @@ export default function WebhooksPage() {
   return (
     <div className="console">
       <Head>
-        <title>Webhooks · PBI Console</title>
+        <title>Webhooks · PBI Dashboard</title>
         <meta
           name="description"
           content="Configure receipt.created webhooks with signed delivery, retries, and secret rotation."
@@ -210,7 +210,7 @@ export default function WebhooksPage() {
         <meta name="theme-color" content="#05070e" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Kojib" />
-        <meta property="og:title" content="Webhooks · PBI Console" />
+        <meta property="og:title" content="Webhooks · PBI Dashboard" />
         <meta property="og:description" content="Signed receipt.created deliveries with secret rotation and retries." />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
@@ -250,7 +250,7 @@ export default function WebhooksPage() {
 
                 <div className="ctaRow">
                   <a className="btnGhost" href="/console">
-                    Console →
+                    Dashboard →
                   </a>
                   <a className="btnGhost" href={EXPORTS_URL}>
                     Exports →
@@ -502,7 +502,7 @@ Notes:
           <footer className="footer">
             <div>© {new Date().getFullYear()} Kojib · PBI</div>
             <div className="footerLinks">
-              <a href="/console">Console</a>
+              <a href="/console">Dashboard</a>
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
               <a href={ROLLOUT_URL}>Rollout guide</a>
@@ -541,7 +541,7 @@ function TopBar({
 
       <nav className="nav" aria-label="Primary">
         <a className={`navLink ${active === "console" ? "navLinkActive" : ""}`} href="/console">
-          Console
+          Dashboard
         </a>
         <a className={`navLink ${active === "webhooks" ? "navLinkActive" : ""}`} href={WEBHOOKS_URL}>
           Webhooks

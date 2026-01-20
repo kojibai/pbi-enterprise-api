@@ -106,7 +106,7 @@ export default function AboutPage() {
               </a>
               {auth === "logged_in" ? (
                 <a className="pbi-navCta" href="/console">
-                  Console
+                  Dashboard
                 </a>
               ) : (
                 <a className="pbi-navCta" href="/#access">

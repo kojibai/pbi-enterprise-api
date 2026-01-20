@@ -178,7 +178,7 @@ export default function ExportsPage() {
   return (
     <div className="console">
       <Head>
-        <title>Exports · PBI Console</title>
+        <title>Exports · PBI Dashboard</title>
         <meta
           name="description"
           content="Download signed, offline-verifiable evidence export packs for audit, compliance, and incident response."
@@ -189,7 +189,7 @@ export default function ExportsPage() {
         <meta name="theme-color" content="#05070e" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Kojib" />
-        <meta property="og:title" content="Exports · PBI Console" />
+        <meta property="og:title" content="Exports · PBI Dashboard" />
         <meta property="og:description" content="Signed evidence export packs for audit and compliance." />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
@@ -229,7 +229,7 @@ export default function ExportsPage() {
 
                 <div className="ctaRow">
                   <a className="btnGhost" href="/console">
-                    Console →
+                    Dashboard →
                   </a>
                   <a className="btnGhost" href={WEBHOOKS_URL}>
                     Webhooks →
@@ -531,7 +531,7 @@ export default function ExportsPage() {
           <footer className="footer">
             <div>© {new Date().getFullYear()} Kojib · PBI</div>
             <div className="footerLinks">
-              <a href="/console">Console</a>
+              <a href="/console">Dashboard</a>
               <a href={WEBHOOKS_URL}>Webhooks</a>
               <a href={EXPORTS_URL}>Exports</a>
               <a href={ROLLOUT_URL}>Rollout guide</a>
@@ -570,7 +570,7 @@ function TopBar({
 
       <nav className="nav" aria-label="Primary">
         <a className="navLink" href="/console">
-          Console
+          Dashboard
         </a>
         <a className={`navLink ${active === "webhooks" ? "navLinkActive" : ""}`} href={WEBHOOKS_URL}>
           Webhooks

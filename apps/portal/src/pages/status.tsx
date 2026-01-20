@@ -82,7 +82,7 @@ export default function StatusPage() {
   const [items, setItems] = useState<ComponentStatus[]>([
     { key: "api", name: "API", status: "unknown", detail: "Pending" },
     { key: "docs", name: "Documentation", status: "unknown", detail: "Pending" },
-    { key: "portal", name: "Console", status: "unknown", detail: "Pending" },
+    { key: "portal", name: "Dashboard", status: "unknown", detail: "Pending" },
     { key: "demo", name: "Demo", status: "unknown", detail: "Pending" },
     { key: "tool", name: "Tooling", status: "unknown", detail: "Pending" }
   ]);
@@ -96,7 +96,7 @@ export default function StatusPage() {
     const openTargets: Array<{ key: ComponentKey; name: string; openUrl: string }> = [
       { key: "api", name: "API", openUrl: `${apiBase}/health` },
       { key: "docs", name: "Documentation", openUrl: API_DOCS },
-      { key: "portal", name: "Console", openUrl: `${SITE_URL}/` },
+      { key: "portal", name: "Dashboard", openUrl: `${SITE_URL}/` },
       { key: "demo", name: "Demo", openUrl: DEMO_URL },
       { key: "tool", name: "Tooling", openUrl: TOOL_URL }
     ];
@@ -256,7 +256,7 @@ export default function StatusPage() {
                   <div className="pbi-sideList">
                     <Bullet>Public API</Bullet>
                     <Bullet>Documentation</Bullet>
-                    <Bullet>Console</Bullet>
+                    <Bullet>Dashboard</Bullet>
                     <Bullet>Demo environment</Bullet>
                     <Bullet>Tooling</Bullet>
                   </div>
@@ -377,7 +377,7 @@ function TopBar({ auth, onHome }: { auth: AuthState; onHome: () => void }) {
         <a href="/status">Status</a>
         {auth === "logged_in" ? (
           <a className="pbi-navCta" href="/console">
-            Console
+            Dashboard
           </a>
         ) : (
           <a className="pbi-navCta" href="/#access">
