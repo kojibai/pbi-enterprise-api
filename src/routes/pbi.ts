@@ -65,18 +65,33 @@ const ReceiptIdParam = z.string().uuid();
 const CursorParam = z
   .string()
   .regex(/^.+\|[0-9a-f-]{36}$/i, "cursor must be <ISO8601>|<uuid>")
-  .transform((value) => {
-    const [rawDate, rawId] = value.split("|");
+  .transform((value): { createdAt: Date; id: string } => {
+    const sep = value.indexOf("|");
+    if (sep <= 0 || sep >= value.length - 1) {
+      throw new Error("cursor must be <ISO8601>|<uuid>");
+    }
+
+    const rawDate = value.slice(0, sep);
+    const rawId = value.slice(sep + 1);
+
     const createdAt = new Date(rawDate);
     if (Number.isNaN(createdAt.getTime())) {
       throw new Error("cursor timestamp invalid");
     }
+
+    // Optional: enforce UUID strictly via zod
+    const uuidOk = z.string().uuid().safeParse(rawId);
+    if (!uuidOk.success) {
+      throw new Error("cursor id invalid");
+    }
+
     return { createdAt, id: rawId };
   });
 
+
 const ReceiptListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
-  cursor: CursorParam.optional(),
+  cursor: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), CursorParam).optional(),
   actionHashHex: z
     .string()
     .regex(/^[0-9a-f]{64}$/i, "actionHashHex must be 64 hex chars")
@@ -315,21 +330,13 @@ pbiRouter.get(
     );
 
     const challenge = challengeRow.rowCount
-      ? (() => {
-          const row = challengeRow.rows[0] as {
-            purpose: string;
-            action_hash_hex: string;
-            expires_at: string;
-            used_at: string | null;
-          };
-          return {
-            id: receipt.challengeId,
-            purpose: row.purpose,
-            actionHashHex: row.action_hash_hex,
-            expiresAtIso: new Date(row.expires_at).toISOString(),
-            usedAtIso: row.used_at ? new Date(row.used_at).toISOString() : null
-          };
-        })()
+      ? {
+          id: receipt.challengeId,
+          purpose: challengeRow.rows[0]?.purpose as string,
+          actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
+          expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
+          usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
+        }
       : null;
 
     res.json({
@@ -440,35 +447,22 @@ pbiRouter.get(
     `;
 
     const rows = await pool.query(query, values);
-    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
-      const challengeRow = row as {
-        id: string;
-        challenge_id: string;
-        receipt_hash_hex: string;
-        decision: string;
-        created_at: string;
-        purpose: string;
-        action_hash_hex: string;
-        expires_at: string;
-        used_at: string | null;
-      };
-      return {
-        receipt: {
-          id: challengeRow.id,
-          challengeId: challengeRow.challenge_id,
-          receiptHashHex: challengeRow.receipt_hash_hex,
-          decision: challengeRow.decision,
-          createdAt: new Date(challengeRow.created_at).toISOString()
-        },
-        challenge: {
-          id: challengeRow.challenge_id,
-          purpose: challengeRow.purpose,
-          actionHashHex: challengeRow.action_hash_hex,
-          expiresAtIso: new Date(challengeRow.expires_at).toISOString(),
-          usedAtIso: challengeRow.used_at ? new Date(challengeRow.used_at).toISOString() : null
-        }
-      };
-    });
+    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => ({
+      receipt: {
+        id: String(row.id),
+        challengeId: String(row.challenge_id),
+        receiptHashHex: String(row.receipt_hash_hex),
+        decision: String(row.decision),
+        createdAt: new Date(row.created_at as string).toISOString()
+      },
+      challenge: {
+        id: String(row.challenge_id),
+        purpose: String(row.purpose),
+        actionHashHex: String(row.action_hash_hex),
+        expiresAtIso: new Date(row.expires_at as string).toISOString(),
+        usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
+      }
+    }));
 
     const last = receipts.at(-1);
     const nextCursor = last ? `${last.receipt.createdAt}|${last.receipt.id}` : null;
