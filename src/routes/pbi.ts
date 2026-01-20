@@ -315,13 +315,21 @@ pbiRouter.get(
     );
 
     const challenge = challengeRow.rowCount
-      ? {
-          id: receipt.challengeId,
-          purpose: challengeRow.rows[0]?.purpose as string,
-          actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
-          expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
-          usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
-        }
+      ? (() => {
+          const row = challengeRow.rows[0] as {
+            purpose: string;
+            action_hash_hex: string;
+            expires_at: string;
+            used_at: string | null;
+          };
+          return {
+            id: receipt.challengeId,
+            purpose: row.purpose,
+            actionHashHex: row.action_hash_hex,
+            expiresAtIso: new Date(row.expires_at).toISOString(),
+            usedAtIso: row.used_at ? new Date(row.used_at).toISOString() : null
+          };
+        })()
       : null;
 
     res.json({
@@ -432,22 +440,35 @@ pbiRouter.get(
     `;
 
     const rows = await pool.query(query, values);
-    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => ({
-      receipt: {
-        id: String(row.id),
-        challengeId: String(row.challenge_id),
-        receiptHashHex: String(row.receipt_hash_hex),
-        decision: String(row.decision),
-        createdAt: new Date(row.created_at as string).toISOString()
-      },
-      challenge: {
-        id: String(row.challenge_id),
-        purpose: String(row.purpose),
-        actionHashHex: String(row.action_hash_hex),
-        expiresAtIso: new Date(row.expires_at as string).toISOString(),
-        usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
-      }
-    }));
+    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
+      const challengeRow = row as {
+        id: string;
+        challenge_id: string;
+        receipt_hash_hex: string;
+        decision: string;
+        created_at: string;
+        purpose: string;
+        action_hash_hex: string;
+        expires_at: string;
+        used_at: string | null;
+      };
+      return {
+        receipt: {
+          id: challengeRow.id,
+          challengeId: challengeRow.challenge_id,
+          receiptHashHex: challengeRow.receipt_hash_hex,
+          decision: challengeRow.decision,
+          createdAt: new Date(challengeRow.created_at).toISOString()
+        },
+        challenge: {
+          id: challengeRow.challenge_id,
+          purpose: challengeRow.purpose,
+          actionHashHex: challengeRow.action_hash_hex,
+          expiresAtIso: new Date(challengeRow.expires_at).toISOString(),
+          usedAtIso: challengeRow.used_at ? new Date(challengeRow.used_at).toISOString() : null
+        }
+      };
+    });
 
     const last = receipts.at(-1);
     const nextCursor = last ? `${last.receipt.createdAt}|${last.receipt.id}` : null;

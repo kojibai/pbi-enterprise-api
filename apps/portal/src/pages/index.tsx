@@ -555,6 +555,7 @@ POST /v1/pbi/verify     { assertion }
                     "/v1/pbi/challenge",
                     "/v1/pbi/verify",
                     "/v1/pbi/receipts",
+                    "/v1/pbi/receipts/{receiptId}",
                     "Auth: Bearer API key",
                     "Receipt + pack/proof model"
                   ]}
