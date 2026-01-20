@@ -1000,6 +1000,32 @@ button.pbi-btnPrimary:visited{
     margin: 0 0 8px 0 !important;
     color: rgba(255,255,255,.58) !important;
   }
+.emailRow{ margin-top: 10px; }
+
+.emailPill{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+  font-size: 12px;
+  color: rgba(255,255,255,.86);
+  max-width: 100%;
+}
+
+.emailPillDot{
+  width: 9px; height: 9px;
+  border-radius: 999px;
+  background: var(--mint);
+  box-shadow: 0 0 0 5px rgba(120,255,231,.10);
+  flex: 0 0 auto;
+}
+
+.emailPillText{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+
+.emailInline{ overflow-wrap:anywhere; word-break:break-word; }
 
   /*
     KEY CHANGE:
