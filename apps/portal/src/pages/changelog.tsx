@@ -43,6 +43,19 @@ export default function ChangelogPage() {
   // NOTE: newest first (production expectation for changelog)
   const entries: ChangelogEntry[] = [
     {
+      version: "v1.2.0",
+      title: "Enterprise WOW pack: webhook delivery, export packs, and key governance",
+      dateISO: "2026-02-01",
+      bullets: [
+        "Receipts listing upgraded with time windows, explicit ordering, opaque cursors, and higher limits (max 500).",
+        "New export endpoint: GET /v1/pbi/receipts/export generates a signed, offline-verifiable zip pack (manifest + hashes + signatures).",
+        "Portal webhooks: create/list/update/delete endpoints for receipt.created events, with HMAC signatures + retry semantics.",
+        "Receipt and challenge payloads enriched with policy metadata, verifier context, and trace identifiers where available.",
+        "API key governance upgrades: rotation endpoint, last-used fields, and optional per-key scopes (export requires pbi.export).",
+        "OpenAPI and portal docs refreshed to document cursor semantics, webhooks, export pack format, and key rotation.",
+      ],
+    },
+    {
       version: "v1.1.0",
       title: "Audit-friendly receipts listing + richer receipt context",
       dateISO: "2026-01-19",

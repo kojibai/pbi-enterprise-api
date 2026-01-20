@@ -83,7 +83,7 @@ export function makeApp() {
       return cb(null, false);
     },
     credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["authorization", "content-type"],
     optionsSuccessStatus: 204,
     maxAge: 86400

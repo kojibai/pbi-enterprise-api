@@ -7,6 +7,9 @@ import type { PortalAuthedRequest } from "../middleware/portalSession.js";
 import { requirePortalSession } from "../middleware/portalSession.js";
 import { hashApiKey } from "../db/queries/apiKeys.js";
 import { normalizeEmail } from "../util/email.js";
+import { generateWebhookSecret } from "../webhooks/secret.js";
+import { config } from "../config.js";
+import { mintRawApiKey, rotateApiKey } from "../portal/apiKeyService.js";
 export const portalRouter = Router();
 
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL ?? "http://localhost:3000";
@@ -23,6 +26,8 @@ const COOKIE_SECURE = (process.env.PORTAL_COOKIE_SECURE ?? "false") === "true";
 
 type EmailMode = "log" | "resend";
 type Plan = "pending" | "starter" | "pro" | "enterprise";
+const ApiKeyScopeEnum = z.enum(["pbi.verify", "pbi.read_receipts", "pbi.export"]);
+const WebhookEventEnum = z.enum(["receipt.created"]);
 
 function getEmailMode(): EmailMode {
   const v = (process.env.EMAIL_MODE ?? "log").toLowerCase();
@@ -50,11 +55,6 @@ function sha256Hex(s: string): string {
 
 function mintToken(): string {
   return Buffer.from(randomBytes(32)).toString("base64url");
-}
-
-function mintRawApiKey(): string {
-  const rnd = Buffer.from(randomBytes(32)).toString("base64url");
-  return `pbi_live_${rnd}`;
 }
 
 function htmlToText(html: string): string {
@@ -282,7 +282,7 @@ portalRouter.get("/me", requirePortalSession, async (req: PortalAuthedRequest, r
 // -------------------------
 portalRouter.get("/api-keys", requirePortalSession, async (req: PortalAuthedRequest, res) => {
   const rows = await pool.query(
-    `SELECT id, label, plan, quota_per_month, is_active, created_at
+    `SELECT id, label, plan, quota_per_month, is_active, created_at, scopes, last_used_at, last_used_ip
      FROM api_keys
      WHERE customer_id=$1
      ORDER BY created_at DESC
@@ -302,20 +302,42 @@ portalRouter.post("/api-keys", requirePortalSession, async (req: PortalAuthedReq
     return;
   }
 
-  const Body = z.object({ label: z.string().min(1).max(60).default("Portal Key") });
-  const { label } = Body.parse(req.body);
+  const Body = z.object({
+    label: z.string().min(1).max(60).default("Portal Key"),
+    scopes: z.array(ApiKeyScopeEnum).min(1).optional()
+  });
+  const { label, scopes } = Body.parse(req.body);
 
   const raw = mintRawApiKey();
   const keyHash = hashApiKey(raw);
   const id = randomUUID();
 
   await pool.query(
-    `INSERT INTO api_keys (id, label, key_hash, plan, quota_per_month, is_active, customer_id)
-     VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
-    [id, label, keyHash, plan, quota.toString(), req.portalCustomer!.id]
+    `INSERT INTO api_keys (id, label, key_hash, plan, quota_per_month, is_active, customer_id, scopes)
+     VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)`,
+    [id, label, keyHash, plan, quota.toString(), req.portalCustomer!.id, scopes ?? null]
   );
 
   res.json({ ok: true, apiKeyId: id, rawApiKey: raw });
+});
+
+portalRouter.post("/api-keys/:id/rotate", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  const keyId = String(req.params.id);
+  const Body = z.object({ keepOldActive: z.boolean().optional() });
+  const { keepOldActive } = Body.parse(req.body ?? {});
+
+  const result = await rotateApiKey({
+    customerId: req.portalCustomer!.id,
+    keyId,
+    keepOldActive: keepOldActive ?? false
+  });
+
+  if (!result.ok) {
+    res.status(404).json({ error: "api_key_not_found" });
+    return;
+  }
+
+  res.json(result);
 });
 
 portalRouter.delete("/api-keys/:id", requirePortalSession, async (req: PortalAuthedRequest, res) => {
@@ -324,6 +346,160 @@ portalRouter.delete("/api-keys/:id", requirePortalSession, async (req: PortalAut
     keyId,
     req.portalCustomer!.id
   ]);
+  res.json({ ok: true });
+});
+
+// -------------------------
+// WEBHOOKS
+// -------------------------
+portalRouter.get("/webhooks", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  const rows = await pool.query(
+    `SELECT w.id,
+            w.api_key_id AS "apiKeyId",
+            w.url,
+            w.events,
+            w.enabled,
+            w.created_at AS "createdAt",
+            w.updated_at AS "updatedAt"
+     FROM webhook_endpoints w
+     JOIN api_keys k ON k.id = w.api_key_id
+     WHERE k.customer_id=$1
+     ORDER BY w.created_at DESC
+     LIMIT 200`,
+    [req.portalCustomer!.id]
+  );
+
+  res.json({ webhooks: rows.rows });
+});
+
+portalRouter.post("/webhooks", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  if (!config.webhookSecretKey) {
+    res.status(500).json({ error: "webhook_secret_key_missing" });
+    return;
+  }
+
+  const Body = z.object({
+    url: z.string().url().max(2048),
+    events: z.array(WebhookEventEnum).min(1),
+    enabled: z.boolean().optional()
+  });
+  const { url, events, enabled } = Body.parse(req.body);
+
+  const keyRow = await pool.query(
+    `SELECT id FROM api_keys WHERE customer_id=$1 AND is_active=TRUE ORDER BY created_at DESC LIMIT 1`,
+    [req.portalCustomer!.id]
+  );
+
+  if (keyRow.rowCount === 0) {
+    res.status(400).json({ error: "no_active_api_key" });
+    return;
+  }
+
+  const apiKeyId = (keyRow.rows[0] as { id: string }).id;
+  const { raw, encrypted } = generateWebhookSecret();
+  const id = randomUUID();
+
+  const created = await pool.query(
+    `INSERT INTO webhook_endpoints
+       (id, api_key_id, url, events, secret_hash, secret_ciphertext, secret_iv, secret_tag, enabled)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id,
+               api_key_id AS "apiKeyId",
+               url,
+               events,
+               enabled,
+               created_at AS "createdAt",
+               updated_at AS "updatedAt"`,
+    [id, apiKeyId, url, Array.from(new Set(events)), encrypted.hash, encrypted.ciphertext, encrypted.iv, encrypted.tag, enabled ?? true]
+  );
+
+  res.json({
+    ok: true,
+    webhook: created.rows[0],
+    secret: raw
+  });
+});
+
+portalRouter.post("/webhooks/:id/rotate-secret", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  if (!config.webhookSecretKey) {
+    res.status(500).json({ error: "webhook_secret_key_missing" });
+    return;
+  }
+
+  const webhookId = String(req.params.id);
+  const { raw, encrypted } = generateWebhookSecret();
+
+  const updated = await pool.query(
+    `UPDATE webhook_endpoints w
+     SET secret_hash=$3, secret_ciphertext=$4, secret_iv=$5, secret_tag=$6, updated_at=now()
+     FROM api_keys k
+     WHERE w.id=$1 AND w.api_key_id = k.id AND k.customer_id=$2
+     RETURNING w.id`,
+    [webhookId, req.portalCustomer!.id, encrypted.hash, encrypted.ciphertext, encrypted.iv, encrypted.tag]
+  );
+
+  if (updated.rowCount === 0) {
+    res.status(404).json({ error: "webhook_not_found" });
+    return;
+  }
+
+  res.json({ ok: true, secret: raw });
+});
+
+portalRouter.patch("/webhooks/:id", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  const Body = z
+    .object({
+      url: z.string().url().max(2048).optional(),
+      events: z.array(WebhookEventEnum).min(1).optional(),
+      enabled: z.boolean().optional()
+    })
+    .refine((data) => data.url || data.events || typeof data.enabled === "boolean", {
+      message: "At least one field must be provided"
+    });
+
+  const { url, events, enabled } = Body.parse(req.body ?? {});
+  const webhookId = String(req.params.id);
+
+  const updated = await pool.query(
+    `UPDATE webhook_endpoints w
+     SET url = COALESCE($3, url),
+         events = COALESCE($4, events),
+         enabled = COALESCE($5, enabled),
+         updated_at = now()
+     FROM api_keys k
+     WHERE w.id=$1 AND w.api_key_id = k.id AND k.customer_id=$2
+     RETURNING w.id,
+               w.api_key_id AS "apiKeyId",
+               w.url,
+               w.events,
+               w.enabled,
+               w.created_at AS "createdAt",
+               w.updated_at AS "updatedAt"`,
+    [webhookId, req.portalCustomer!.id, url ?? null, events ? Array.from(new Set(events)) : null, enabled ?? null]
+  );
+
+  if (updated.rowCount === 0) {
+    res.status(404).json({ error: "webhook_not_found" });
+    return;
+  }
+
+  res.json({ ok: true, webhook: updated.rows[0] });
+});
+
+portalRouter.delete("/webhooks/:id", requirePortalSession, async (req: PortalAuthedRequest, res) => {
+  const webhookId = String(req.params.id);
+  const deleted = await pool.query(
+    `DELETE FROM webhook_endpoints w
+     USING api_keys k
+     WHERE w.id=$1 AND w.api_key_id = k.id AND k.customer_id=$2`,
+    [webhookId, req.portalCustomer!.id]
+  );
+
+  if (deleted.rowCount === 0) {
+    res.status(404).json({ error: "webhook_not_found" });
+    return;
+  }
+
   res.json({ ok: true });
 });
 

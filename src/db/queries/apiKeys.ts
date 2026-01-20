@@ -8,6 +8,7 @@ export type ApiKeyRecord = {
   quotaPerMonth: bigint;
   isActive: boolean;
   label: string;
+  scopes: string[] | null;
 };
 
 export function hashApiKey(raw: string): string {
@@ -18,7 +19,7 @@ export function hashApiKey(raw: string): string {
 export async function getApiKeyByRaw(raw: string): Promise<ApiKeyRecord | null> {
   const keyHash = hashApiKey(raw);
   const res = await pool.query(
-    `SELECT id, plan, quota_per_month, is_active, label FROM api_keys WHERE key_hash=$1`,
+    `SELECT id, plan, quota_per_month, is_active, label, scopes FROM api_keys WHERE key_hash=$1`,
     [keyHash]
   );
   if (res.rowCount === 0) return null;
@@ -29,6 +30,7 @@ export async function getApiKeyByRaw(raw: string): Promise<ApiKeyRecord | null> 
     quota_per_month: string;
     is_active: boolean;
     label: string;
+    scopes: string[] | null;
   };
 
   return {
@@ -36,6 +38,11 @@ export async function getApiKeyByRaw(raw: string): Promise<ApiKeyRecord | null> 
     plan: row.plan,
     quotaPerMonth: BigInt(row.quota_per_month),
     isActive: row.is_active,
-    label: row.label
+    label: row.label,
+    scopes: row.scopes
   };
+}
+
+export async function recordApiKeyUse(apiKeyId: string, ip: string | null): Promise<void> {
+  await pool.query(`UPDATE api_keys SET last_used_at=now(), last_used_ip=$2 WHERE id=$1`, [apiKeyId, ip]);
 }

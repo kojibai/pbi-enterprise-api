@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { getApiKeyByRaw, ApiKeyRecord } from "../db/queries/apiKeys.js";
+import { getApiKeyByRaw, ApiKeyRecord, recordApiKeyUse } from "../db/queries/apiKeys.js";
 
 export type AuthedRequest = Request & { apiKey?: ApiKeyRecord };
 
@@ -28,6 +28,13 @@ export async function apiKeyAuth(req: AuthedRequest, res: Response, next: NextFu
     if (!rec || !rec.isActive) {
       res.status(403).json({ error: "invalid_api_key" });
       return;
+    }
+
+    try {
+      const ip = typeof req.ip === "string" && req.ip.length > 0 ? req.ip : null;
+      await recordApiKeyUse(rec.id, ip);
+    } catch {
+      // ignore last-used update errors
     }
 
     req.apiKey = rec;

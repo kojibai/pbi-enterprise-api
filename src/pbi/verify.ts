@@ -25,6 +25,8 @@ export type VerifyWebAuthnOutput = {
     | "MISSING_UP"
     | "MISSING_UV"
     | "BAD_SIGNATURE";
+  up?: boolean;
+  uv?: boolean;
 };
 
 function parseClientData(jsonBytes: Uint8Array): ClientData | null {
@@ -77,8 +79,8 @@ export function verifyWebAuthnAssertion(input: VerifyWebAuthnInput): VerifyWebAu
   const UP = (flagsByte & 0x01) !== 0;
   const UV = (flagsByte & 0x04) !== 0;
 
-  if (!UP) return { ok: false, reason: "MISSING_UP" };
-  if (!UV) return { ok: false, reason: "MISSING_UV" };
+  if (!UP) return { ok: false, reason: "MISSING_UP", up: UP, uv: UV };
+  if (!UV) return { ok: false, reason: "MISSING_UV", up: UP, uv: UV };
 
   // Signed bytes = authenticatorData || SHA256(clientDataJSON)
   const clientHash = sha256Bytes(clientDataJSON);
@@ -87,7 +89,7 @@ export function verifyWebAuthnAssertion(input: VerifyWebAuthnInput): VerifyWebAu
   signed.set(clientHash, authenticatorData.length);
 
   const okSig = verifyEs256Pem(input.assertion.pubKeyPem, signed, signature);
-  if (!okSig) return { ok: false, reason: "BAD_SIGNATURE" };
+  if (!okSig) return { ok: false, reason: "BAD_SIGNATURE", up: UP, uv: UV };
 
-  return { ok: true, reason: "OK" };
+  return { ok: true, reason: "OK", up: UP, uv: UV };
 }
