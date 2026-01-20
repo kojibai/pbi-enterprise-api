@@ -5,6 +5,7 @@ import type { AuthedRequest } from "../middleware/apiKeyAuth.js";
 import { createChallenge, getChallenge, markChallengeUsed } from "../pbi/challengeStore.js";
 import { verifyWebAuthnAssertion } from "../pbi/verify.js";
 import { getReceiptByChallengeId, getReceiptById, mintReceipt, storeReceipt } from "../pbi/receipt.js";
+import { pool } from "../db/pool.js";
 import { consumeQuotaUnit } from "../billing/quota.js";
 
 export const pbiRouter = Router();
@@ -61,6 +62,59 @@ const VerifyReq = z.object({
   })
 });
 const ReceiptIdParam = z.string().uuid();
+const CursorParam = z
+  .string()
+  .regex(/^.+\|[0-9a-f-]{36}$/i, "cursor must be <ISO8601>|<uuid>")
+  .superRefine((value, ctx) => {
+    const sep = value.indexOf("|");
+    if (sep <= 0 || sep >= value.length - 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor must be <ISO8601>|<uuid>"
+      });
+      return;
+    }
+
+    const rawDate = value.slice(0, sep);
+    const rawId = value.slice(sep + 1);
+
+    const createdAt = new Date(rawDate);
+    if (Number.isNaN(createdAt.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor timestamp invalid"
+      });
+    }
+
+    const uuidOk = z.string().uuid().safeParse(rawId);
+    if (!uuidOk.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursor id invalid"
+      });
+    }
+  })
+  .transform((value): { createdAt: Date; id: string } => {
+    const sep = value.indexOf("|");
+    const rawDate = sep > -1 ? value.slice(0, sep) : "";
+    const rawId = sep > -1 ? value.slice(sep + 1) : "";
+    const createdAt = new Date(rawDate);
+    return { createdAt, id: rawId };
+  });
+
+
+const ReceiptListQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  cursor: z.preprocess((v) => (Array.isArray(v) ? v[0] : v), CursorParam).optional(),
+  actionHashHex: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, "actionHashHex must be 64 hex chars")
+    .transform((s) => s.toLowerCase())
+    .optional(),
+  challengeId: z.string().uuid().optional(),
+  purpose: PurposeEnum.optional(),
+  decision: z.enum(["PBI_VERIFIED", "FAILED", "EXPIRED", "REPLAYED"]).optional()
+});
 
 pbiRouter.post(
   "/challenge",
@@ -239,6 +293,17 @@ pbiRouter.get(
       return;
     }
 
+    const challenge = await getChallenge(challengeId);
+    const challengePayload = challenge
+      ? {
+          id: challenge.id,
+          purpose: challenge.purpose,
+          actionHashHex: challenge.actionHashHex,
+          expiresAtIso: challenge.expiresAt.toISOString(),
+          usedAtIso: challenge.usedAt ? challenge.usedAt.toISOString() : null
+        }
+      : null;
+
     res.json({
       receipt: {
         id: receipt.id,
@@ -246,7 +311,8 @@ pbiRouter.get(
         receiptHashHex: receipt.receiptHashHex,
         decision: receipt.decision,
         createdAt: receipt.createdAt
-      }
+      },
+      challenge: challengePayload
     });
   })
 );
@@ -269,6 +335,24 @@ pbiRouter.get(
       return;
     }
 
+    const challengeRow = await pool.query(
+      `SELECT purpose, action_hash_hex, expires_at, used_at
+       FROM pbi_challenges
+       WHERE id=$1 AND api_key_id=$2
+       LIMIT 1`,
+      [receipt.challengeId, apiKey.id]
+    );
+
+    const challenge = challengeRow.rowCount
+      ? {
+          id: receipt.challengeId,
+          purpose: challengeRow.rows[0]?.purpose as string,
+          actionHashHex: challengeRow.rows[0]?.action_hash_hex as string,
+          expiresAtIso: new Date(challengeRow.rows[0]?.expires_at as string).toISOString(),
+          usedAtIso: challengeRow.rows[0]?.used_at ? new Date(challengeRow.rows[0]?.used_at as string).toISOString() : null
+        }
+      : null;
+
     res.json({
       receipt: {
         id: receipt.id,
@@ -276,7 +360,8 @@ pbiRouter.get(
         receiptHashHex: receipt.receiptHashHex,
         decision: receipt.decision,
         createdAt: receipt.createdAt
-      }
+      },
+      challenge
     });
   })
 );
@@ -314,5 +399,88 @@ pbiRouter.post(
         createdAt: receipt.createdAt
       }
     });
+  })
+);
+
+pbiRouter.get(
+  "/receipts",
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const parsed = ReceiptListQuery.safeParse(req.query ?? {});
+
+    if (parsed && !parsed.success) {
+      res.status(400).json({ error: "invalid_request", issues: parsed.error.issues });
+      return;
+    }
+
+    const params = parsed.data;
+    const limit = params.limit ?? 50;
+
+    const values: Array<string | number | Date> = [apiKey.id];
+    const clauses = ["r.api_key_id = $1"];
+
+    if (params.cursor) {
+      values.push(params.cursor.createdAt, params.cursor.id);
+      clauses.push(
+        `(r.created_at < $${values.length - 1} OR (r.created_at = $${values.length - 1} AND r.id < $${
+          values.length
+        }))`
+      );
+    }
+
+    if (params.actionHashHex) {
+      values.push(params.actionHashHex);
+      clauses.push(`c.action_hash_hex = $${values.length}`);
+    }
+
+    if (params.challengeId) {
+      values.push(params.challengeId);
+      clauses.push(`r.challenge_id = $${values.length}`);
+    }
+
+    if (params.purpose) {
+      values.push(params.purpose);
+      clauses.push(`c.purpose = $${values.length}`);
+    }
+
+    if (params.decision) {
+      values.push(params.decision);
+      clauses.push(`r.decision = $${values.length}`);
+    }
+
+    values.push(limit);
+
+    const query = `
+      SELECT r.id, r.challenge_id, r.receipt_hash_hex, r.decision, r.created_at,
+             c.purpose, c.action_hash_hex, c.expires_at, c.used_at
+      FROM pbi_receipts r
+      JOIN pbi_challenges c ON c.id = r.challenge_id
+      WHERE ${clauses.join(" AND ")}
+      ORDER BY r.created_at DESC, r.id DESC
+      LIMIT $${values.length}
+    `;
+
+    const rows = await pool.query(query, values);
+    const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => ({
+      receipt: {
+        id: String(row.id),
+        challengeId: String(row.challenge_id),
+        receiptHashHex: String(row.receipt_hash_hex),
+        decision: String(row.decision),
+        createdAt: new Date(row.created_at as string).toISOString()
+      },
+      challenge: {
+        id: String(row.challenge_id),
+        purpose: String(row.purpose),
+        actionHashHex: String(row.action_hash_hex),
+        expiresAtIso: new Date(row.expires_at as string).toISOString(),
+        usedAtIso: row.used_at ? new Date(row.used_at as string).toISOString() : null
+      }
+    }));
+
+    const last = receipts.at(-1);
+    const nextCursor = last ? `${last.receipt.createdAt}|${last.receipt.id}` : null;
+
+    res.json({ receipts, nextCursor });
   })
 );

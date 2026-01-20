@@ -551,7 +551,14 @@ POST /v1/pbi/verify     { assertion }
                   period=""
                   tagline="Exact endpoints, payloads, and response semantics."
                   bestFor="Best for: implementation + security review."
-                  bullets={["/v1/pbi/challenge", "/v1/pbi/verify", "Auth: Bearer API key", "Receipt + pack/proof model"]}
+                  bullets={[
+                    "/v1/pbi/challenge",
+                    "/v1/pbi/verify",
+                    "/v1/pbi/receipts",
+                    "/v1/pbi/receipts/{receiptId}",
+                    "Auth: Bearer API key",
+                    "Receipt + pack/proof model"
+                  ]}
                   ctaLabel="Open docs"
                   ctaHref={API_DOCS}
                 />
