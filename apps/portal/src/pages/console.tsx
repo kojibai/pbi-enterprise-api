@@ -1,9 +1,33 @@
+// pages/console.tsx
 import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
 import { apiJson } from "../lib/api";
 
 type Me = { customer: { id: string; email: string; plan: string; quotaPerMonth: string } };
-type ApiKeyRow = { id: string; label: string; plan: string; quota_per_month: string; is_active: boolean; created_at: string };
+
+type ApiKeyRow = {
+  id: string;
+  label: string;
+  plan: string;
+  quota_per_month: string;
+  is_active: boolean;
+  created_at: string;
+  scopes: string[] | null;
+  last_used_at: string | null;
+  last_used_ip: string | null;
+};
+
 type UsageRow = { month_key: string; kind: string; total: string };
+
+type WebhookRow = {
+  id: string;
+  apiKeyId: string;
+  url: string;
+  events: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type PlanKey = "starter" | "pro" | "enterprise";
 
@@ -18,11 +42,7 @@ function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPen
   if (s === "starter") return { planKey: "starter", uiLabel: "Starter", isPending: false };
   if (s === "pro") return { planKey: "pro", uiLabel: "Pro", isPending: false };
   if (s === "enterprise") return { planKey: "enterprise", uiLabel: "Scale", isPending: false };
-
-  // common pre-billing state
   if (s === "pending") return { planKey: "starter", uiLabel: "Pending", isPending: true };
-
-  // never crash for unknown values
   return { planKey: "starter", uiLabel: s ? s.toUpperCase() : "Starter", isPending: false };
 }
 
@@ -34,9 +54,38 @@ function fmtDate(d: string) {
   }
 }
 
+function fmtInt(n: number) {
+  return n.toLocaleString();
+}
+
 function toNum(s: string) {
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
+}
+
+function latestMonthKey(rows: UsageRow[]): string | null {
+  const ks = rows.map((r) => (r.month_key ?? "").trim()).filter(Boolean);
+  if (!ks.length) return null;
+  ks.sort(); // YYYY-MM sorts naturally
+  return ks[ks.length - 1] ?? null;
+}
+
+function EmailText({ email }: { email: string }) {
+  const parts = email.split(/([@.])/);
+  return (
+    <span className="emailInline" aria-label={email}>
+      {parts.map((p, i) =>
+        p === "@" || p === "." ? (
+          <span key={String(i)}>
+            {p}
+            <wbr />
+          </span>
+        ) : (
+          <span key={String(i)}>{p}</span>
+        )
+      )}
+    </span>
+  );
 }
 
 export default function Home() {
@@ -44,6 +93,14 @@ export default function Home() {
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [usage, setUsage] = useState<UsageRow[]>([]);
   const [rawKey, setRawKey] = useState<string>("");
+
+  const [webhooks, setWebhooks] = useState<WebhookRow[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [webhookSecretOnce, setWebhookSecretOnce] = useState<string>("");
+  const [webhookRotatedSecretOnce, setWebhookRotatedSecretOnce] = useState<string>("");
+
+  const [exportBusy, setExportBusy] = useState<boolean>(false);
+  const [exportErr, setExportErr] = useState<string>("");
 
   const [busy, setBusy] = useState<string>("");
   const [err, setErr] = useState<string>("");
@@ -57,7 +114,7 @@ export default function Home() {
     []
   );
 
-  async function load() {
+  async function load(): Promise<void> {
     const m = await apiJson<Me>("/v1/portal/me");
     setMe(m);
 
@@ -66,6 +123,14 @@ export default function Home() {
 
     const u = await apiJson<{ rows: UsageRow[] }>("/v1/portal/usage");
     setUsage(u.rows);
+
+    // Webhooks are optional for some deployments; do not break console if unavailable.
+    try {
+      const w = await apiJson<{ webhooks: WebhookRow[] }>("/v1/portal/webhooks");
+      setWebhooks(w.webhooks);
+    } catch {
+      setWebhooks([]);
+    }
   }
 
   useEffect(() => {
@@ -74,6 +139,12 @@ export default function Home() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function copy(text: string) {
+    try {
+      void navigator.clipboard.writeText(text);
+    } catch {}
+  }
 
   async function createKey() {
     setErr("");
@@ -127,82 +198,137 @@ export default function Home() {
     }
   }
 
+  async function createWebhook() {
+    setErr("");
+    setWebhookSecretOnce("");
+    setWebhookRotatedSecretOnce("");
+
+    const url = webhookUrl.trim();
+    if (!url) return;
+
+    setBusy("wh:create");
+    try {
+      const r = await apiJson<{ ok: true; webhook: WebhookRow; secret: string }>("/v1/portal/webhooks", {
+        method: "POST",
+        body: JSON.stringify({ url, events: ["receipt.created"], enabled: true })
+      });
+      setWebhookSecretOnce(r.secret);
+      setWebhookUrl("");
+      await load();
+    } catch {
+      setErr("Could not create webhook. Check the URL and try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function rotateWebhookSecret(id: string) {
+    setErr("");
+    setWebhookRotatedSecretOnce("");
+    setBusy(`wh:rot:${id}`);
+    try {
+      const r = await apiJson<{ ok: true; secret: string }>(`/v1/portal/webhooks/${id}/rotate-secret`, {
+        method: "POST"
+      });
+      setWebhookRotatedSecretOnce(r.secret);
+      await load();
+    } catch {
+      setErr("Could not rotate webhook secret. Try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteWebhook(id: string) {
+    setErr("");
+    setBusy(`wh:del:${id}`);
+    try {
+      await apiJson<{ ok: true }>(`/v1/portal/webhooks/${id}`, { method: "DELETE" });
+      await load();
+    } catch {
+      setErr("Could not delete webhook. Try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function downloadExportLast24h() {
+    setExportErr("");
+    setExportBusy(true);
+
+    try {
+      const now = new Date();
+      const createdBefore = now.toISOString();
+      const createdAfter = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+      const qs = new URLSearchParams({
+        limit: "500",
+        order: "desc",
+        createdAfter,
+        createdBefore
+      });
+
+      const resp = await fetch(`/v1/portal/receipts/export?${qs.toString()}`, {
+        method: "GET",
+        credentials: "include"
+      });
+
+      if (!resp.ok) {
+        setExportErr(`Export failed (${resp.status}).`);
+        return;
+      }
+
+      const blob = await resp.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = "pbi-receipts-export.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      setExportErr("Export failed. Try again.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   const { planKey: currentPlanKey, uiLabel: planLabel, isPending } = normalizePlan(me?.customer.plan);
   const planUpper = planLabel.toUpperCase();
-  const quota = me?.customer.quotaPerMonth ?? "—";
+
   const quotaPerMonthNum = useMemo(() => {
-  const raw = (me?.customer.quotaPerMonth ?? "").replace(/,/g, "").trim();
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}, [me?.customer.quotaPerMonth]);
+    const raw = (me?.customer.quotaPerMonth ?? "").replace(/,/g, "").trim();
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [me?.customer.quotaPerMonth]);
 
-const quotaDisplay = quotaPerMonthNum ? `${fmtInt(quotaPerMonthNum)}/mo` : "—";
+  const quotaDisplay = quotaPerMonthNum ? `${fmtInt(quotaPerMonthNum)}/mo` : "—";
+  const thisMonthKey = useMemo(() => latestMonthKey(usage), [usage]);
 
-const thisMonthKey = useMemo(() => latestMonthKey(usage), [usage]);
+  const usageThisMonth = useMemo(() => {
+    if (!thisMonthKey) return 0;
+    return usage
+      .filter((r) => (r.month_key ?? "").trim() === thisMonthKey)
+      .reduce((s, r) => s + toNum(r.total), 0);
+  }, [usage, thisMonthKey]);
 
-const usageThisMonth = useMemo(() => {
-  if (!thisMonthKey) return 0;
-  return usage
-    .filter((r) => (r.month_key ?? "").trim() === thisMonthKey)
-    .reduce((s, r) => s + toNum(r.total), 0);
-}, [usage, thisMonthKey]);
+  const quotaRemaining = useMemo(() => {
+    if (!quotaPerMonthNum) return null;
+    const left = quotaPerMonthNum - usageThisMonth;
+    return left >= 0 ? left : 0;
+  }, [quotaPerMonthNum, usageThisMonth]);
 
-const quotaRemaining = useMemo(() => {
-  if (!quotaPerMonthNum) return null;
-  const left = quotaPerMonthNum - usageThisMonth;
-  return left >= 0 ? left : 0;
-}, [quotaPerMonthNum, usageThisMonth]);
-
-const quotaOver = useMemo(() => {
-  if (!quotaPerMonthNum) return null;
-  const over = usageThisMonth - quotaPerMonthNum;
-  return over > 0 ? over : 0;
-}, [quotaPerMonthNum, usageThisMonth]);
-
-  const usageTotal = useMemo(() => usage.reduce((s, r) => s + toNum(r.total), 0), [usage]);
-  const usageByKind = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const r of usage) out[r.kind] = (out[r.kind] ?? 0) + toNum(r.total);
-    return out;
-  }, [usage]);
+  const quotaOver = useMemo(() => {
+    if (!quotaPerMonthNum) return null;
+    const over = usageThisMonth - quotaPerMonthNum;
+    return over > 0 ? over : 0;
+  }, [quotaPerMonthNum, usageThisMonth]);
 
   const activeKeys = useMemo(() => keys.filter((k) => k.is_active), [keys]);
 
-  function copy(text: string) {
-    try {
-      void navigator.clipboard.writeText(text);
-    } catch {}
-  }
-
   if (!me) return null;
-function EmailText({ email }: { email: string }) {
-  const parts = email.split(/([@.])/);
-  return (
-    <span className="emailInline" aria-label={email}>
-      {parts.map((p, i) =>
-        p === "@" || p === "." ? (
-          <span key={String(i)}>
-            {p}
-            <wbr />
-          </span>
-        ) : (
-          <span key={String(i)}>{p}</span>
-        )
-      )}
-    </span>
-  );
-}
 
-function fmtInt(n: number) {
-  return n.toLocaleString();
-}
-
-function latestMonthKey(rows: UsageRow[]): string | null {
-  const ks = rows.map((r) => (r.month_key ?? "").trim()).filter(Boolean);
-  if (!ks.length) return null;
-  ks.sort(); // YYYY-MM sorts naturally
-  return ks[ks.length - 1] ?? null;
-}
   return (
     <div className="console">
       <style>{css}</style>
@@ -232,12 +358,10 @@ function latestMonthKey(rows: UsageRow[]): string | null {
               Billing
             </a>
 
-            {/* Public-safe link (always ok) */}
             <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
               Demo
             </a>
 
-            {/* Tool link: hide behind non-pending if you want (keeps it clean) */}
             {!isPending ? (
               <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
                 Attester Tool
@@ -263,31 +387,34 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                   PBI Client Control Panel
                 </div>
 
-               <div className="emailRow">
-  <div className="emailPill" title={me.customer.email}>
-    <span className="emailPillDot" aria-hidden />
-    <span className="emailPillText">
-      <EmailText email={me.customer.email} />
-    </span>
-  </div>
-</div>
-                <p className="lead">Keys mint access. Usage is metered. Invoices are auditable.</p>
-<div className="kpiRow kpiRow5">
-  <KPI label="Plan" value={planUpper} />
-  <KPI label="Quota" value={quotaDisplay} />
-  <KPI label="This month" value={fmtInt(usageThisMonth)} />
-  <KPI
-    label="Remaining"
-    value={quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}
-    tone={quotaOver != null && quotaOver > 0 ? "danger" : "ok"}
-  />
-  <KPI label="Active keys" value={activeKeys.length.toString()} />
-</div>
+                <div className="emailRow">
+                  <div className="emailPill" title={me.customer.email}>
+                    <span className="emailPillDot" aria-hidden />
+                    <span className="emailPillText">
+                      <EmailText email={me.customer.email} />
+                    </span>
+                  </div>
+                </div>
+
+                <p className="lead">Keys mint access. Usage is metered. Evidence exports are verifiable.</p>
+
+                <div className="kpiRow kpiRow5">
+                  <KPI label="Plan" value={planUpper} />
+                  <KPI label="Quota" value={quotaDisplay} />
+                  <KPI label="This month" value={fmtInt(usageThisMonth)} />
+                  <KPI
+                    label="Remaining"
+                    value={quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}
+                    tone={quotaOver != null && quotaOver > 0 ? "danger" : "ok"}
+                  />
+                  <KPI label="Active keys" value={activeKeys.length.toString()} />
+                </div>
+
                 {isPending ? (
                   <div className="pendingCallout" role="status">
                     <div className="pendingTitle">Pending billing activation</div>
                     <div className="pendingBody">
-                      Your account is in <b>pending</b> state. Activate billing to start metering and unlock plan enforcement.
+                      Your account is in <b>pending</b> state. Activate billing to enable plan enforcement and unlock enterprise controls.
                     </div>
                     <div className="pendingBtns">
                       <a className="btnPrimary" href="/billing">
@@ -315,11 +442,11 @@ function latestMonthKey(rows: UsageRow[]): string | null {
 
                   {!isPending ? (
                     <a className="btnGhost" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-                    Attester →
+                      Attester →
                     </a>
                   ) : (
                     <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-                    Demo →
+                      Demo →
                     </a>
                   )}
                 </div>
@@ -331,7 +458,7 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                         <div className="secretTitle">New API key (shown once)</div>
                         <div className="secretSub">Copy it now. You won’t be able to view it again.</div>
                       </div>
-                      <button className="btnGhost" onClick={() => copy(rawKey)}>
+                      <button className="btnGhost" onClick={() => copy(rawKey)} type="button">
                         Copy
                       </button>
                     </div>
@@ -366,6 +493,25 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                   </div>
 
                   <div className="mobileCard mobileCardWide">
+                    <div className="kicker">Enterprise</div>
+                    <div className="mobileTitle">Webhooks</div>
+                    <div className="hint">Push receipt.created to your systems with signed delivery.</div>
+                    <a className="linkBtnPrimary" href="#webhooks">
+                      Configure →
+                    </a>
+                  </div>
+
+                  <div className="mobileCard mobileCardWide">
+                    <div className="kicker">Compliance</div>
+                    <div className="mobileTitle">Export evidence</div>
+                    <div className="hint">Offline-verifiable ZIP (manifest + hashes + signature).</div>
+                    <button className="linkBtnPrimary" disabled={exportBusy} onClick={downloadExportLast24h} type="button">
+                      {exportBusy ? "Preparing…" : "Download (24h) →"}
+                    </button>
+                    {exportErr ? <div className="hint" style={{ color: "rgba(255,138,160,.95)" }}>{exportErr}</div> : null}
+                  </div>
+
+                  <div className="mobileCard mobileCardWide">
                     <div className="kicker">Tools</div>
                     <div className="mobileTitle">{isPending ? "Run demo" : "PBI Attester"}</div>
                     <div className="hint">
@@ -382,25 +528,6 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                     >
                       {isPending ? "Demo →" : "Attester →"}
                     </a>
-
-                    <div className="hint" style={{ marginTop: 8 }}>
-                      {isPending ? (
-                        <>
-                          After billing activation, use{" "}
-                          <a href="https://tool.kojib.com" target="_blank" rel="noreferrer" style={{ color: "rgba(120,255,231,.9)" }}>
-                            tool.kojib.com
-                          </a>{" "}
-                          for BYOK testing.
-                        </>
-                      ) : (
-                        <>
-                          Public demo:{" "}
-                          <a href="https://demo.kojib.com" target="_blank" rel="noreferrer" style={{ color: "rgba(120,255,231,.9)" }}>
-                            demo.kojib.com
-                          </a>
-                        </>
-                      )}
-                    </div>
                   </div>
 
                   <div className="mobileCard mobileCardWide">
@@ -444,27 +571,28 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                 </div>
 
                 <div className="sideBody">
- <div className="miniRow">
-  <div className="miniK">Monthly quota</div>
-  <div className="miniV">{quotaDisplay}</div>
-</div>
+                  <div className="miniRow">
+                    <div className="miniK">Monthly quota</div>
+                    <div className="miniV">{quotaDisplay}</div>
+                  </div>
 
-<div className="miniRow">
-  <div className="miniK">This month</div>
-  <div className="miniV">{fmtInt(usageThisMonth)}</div>
-</div>
+                  <div className="miniRow">
+                    <div className="miniK">This month</div>
+                    <div className="miniV">{fmtInt(usageThisMonth)}</div>
+                  </div>
 
-<div className="miniRow">
-  <div className="miniK">Remaining</div>
-  <div className="miniV">{quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}</div>
-</div>
+                  <div className="miniRow">
+                    <div className="miniK">Remaining</div>
+                    <div className="miniV">{quotaRemaining == null ? "—" : fmtInt(quotaRemaining)}</div>
+                  </div>
 
-{quotaOver != null && quotaOver > 0 ? (
-  <div className="miniRow">
-    <div className="miniK">Overage</div>
-    <div className="miniV">{fmtInt(quotaOver)}</div>
-  </div>
-) : null}
+                  {quotaOver != null && quotaOver > 0 ? (
+                    <div className="miniRow">
+                      <div className="miniK">Overage</div>
+                      <div className="miniV">{fmtInt(quotaOver)}</div>
+                    </div>
+                  ) : null}
+
                   <div className="miniRow">
                     <div className="miniK">Metering</div>
                     <div className="miniV">challenge + verify</div>
@@ -492,7 +620,7 @@ function latestMonthKey(rows: UsageRow[]): string | null {
 
                   <div className="planBtns">
                     <a className="btnGhost" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-                    Demo →
+                      Demo →
                     </a>
                     {!isPending ? (
                       <a className="btnPrimary" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
@@ -506,12 +634,156 @@ function latestMonthKey(rows: UsageRow[]): string | null {
                   </div>
 
                   <div className="hint" style={{ marginTop: 10 }}>
-                    Demo is public-safe. The Attester Tool is for integration testing (BYOK).
+                    Demo is public-safe. Attester Tool is for integration testing (BYOK).
                   </div>
                 </div>
               </aside>
             </div>
           </section>
+
+          {/* DESKTOP: ENTERPRISE CONTROLS */}
+          <div className="grid">
+            <section className="panel" id="webhooks">
+              <div className="panelHead">
+                <div>
+                  <div className="kicker">Enterprise Controls</div>
+                  <div className="panelTitle">Webhooks</div>
+                </div>
+                <div className="panelMeta">{webhooks.length} configured</div>
+              </div>
+
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div className="panelMeta">
+                  Push <span style={{ color: "rgba(120,255,231,.92)", fontWeight: 900 }}>receipt.created</span> events to your systems with
+                  signed delivery headers. Rotate secrets on schedule and after any incident.
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    value={webhookUrl}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setWebhookUrl(e.target.value)}
+                    placeholder="https://your-app.com/pbi/webhook"
+                    className="textInput"
+                  />
+                  <button className="btnPrimary" disabled={!webhookUrl.trim() || !!busy || isPending} onClick={createWebhook} type="button">
+                    {busy === "wh:create" ? "Creating…" : "Create webhook"}
+                  </button>
+                </div>
+
+                {isPending ? (
+                  <div className="pendingCallout" role="status">
+                    <div className="pendingTitle">Enterprise controls locked</div>
+                    <div className="pendingBody">
+                      Activate billing to enable webhook configuration and export access.
+                    </div>
+                    <div className="pendingBtns">
+                      <a className="btnPrimary" href="/billing">
+                        Activate billing →
+                      </a>
+                    </div>
+                  </div>
+                ) : null}
+
+                {webhookSecretOnce ? (
+                  <div className="secretBox" role="status" aria-live="polite">
+                    <div className="secretTop">
+                      <div>
+                        <div className="secretTitle">Webhook secret (shown once)</div>
+                        <div className="secretSub">Store this in your webhook verifier. You won’t be able to view it again.</div>
+                      </div>
+                      <button className="btnGhost" onClick={() => copy(webhookSecretOnce)} type="button">
+                        Copy
+                      </button>
+                    </div>
+                    <pre className="secretCode">{webhookSecretOnce}</pre>
+                  </div>
+                ) : null}
+
+                {webhookRotatedSecretOnce ? (
+                  <div className="secretBox" role="status" aria-live="polite">
+                    <div className="secretTop">
+                      <div>
+                        <div className="secretTitle">Rotated webhook secret (shown once)</div>
+                        <div className="secretSub">Update your verifier immediately.</div>
+                      </div>
+                      <button className="btnGhost" onClick={() => copy(webhookRotatedSecretOnce)} type="button">
+                        Copy
+                      </button>
+                    </div>
+                    <pre className="secretCode">{webhookRotatedSecretOnce}</pre>
+                  </div>
+                ) : null}
+
+                <div className="table">
+                  <div className="trow head" style={{ gridTemplateColumns: "1.6fr .8fr .6fr .8fr" }}>
+                    <div className="cell">Endpoint</div>
+                    <div className="cell right">Event</div>
+                    <div className="cell right">Enabled</div>
+                    <div className="cell right">Actions</div>
+                  </div>
+
+                  {webhooks.length === 0 ? (
+                    <div className="trow" style={{ gridTemplateColumns: "1fr" }}>
+                      <div className="cell muted">No webhooks configured.</div>
+                    </div>
+                  ) : (
+                    webhooks.map((w) => (
+                      <div key={w.id} className="trow" style={{ gridTemplateColumns: "1.6fr .8fr .6fr .8fr" }}>
+                        <div className="cell">
+                          <div className="strong">{w.url}</div>
+                          <div className="mutedSmall">
+                            Created: {fmtDate(w.createdAt)} · Updated: {fmtDate(w.updatedAt)}
+                          </div>
+                        </div>
+                        <div className="cell right">{w.events.join(", ")}</div>
+                        <div className="cell right">{w.enabled ? "Yes" : "No"}</div>
+                        <div className="cell right" style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                          <button
+                            className="btnGhost"
+                            disabled={!!busy || isPending}
+                            onClick={() => rotateWebhookSecret(w.id)}
+                            type="button"
+                          >
+                            {busy === `wh:rot:${w.id}` ? "Rotating…" : "Rotate"}
+                          </button>
+                          <button className="btnDanger" disabled={!!busy || isPending} onClick={() => deleteWebhook(w.id)} type="button">
+                            {busy === `wh:del:${w.id}` ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="panel" id="export">
+              <div className="panelHead">
+                <div>
+                  <div className="kicker">Compliance</div>
+                  <div className="panelTitle">Export evidence pack</div>
+                </div>
+                <div className="panelMeta">Offline-verifiable ZIP</div>
+              </div>
+
+              {exportErr ? <div className="error">{exportErr}</div> : null}
+
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div className="panelMeta">
+                  Exports include <span className="strong">receipts.ndjson</span>, policy snapshot, manifest hashes, and Ed25519 signature for offline
+                  verification. Generated using your portal session (no API key exposure in browser).
+                </div>
+
+                <button className="btnPrimary" disabled={exportBusy || isPending} onClick={downloadExportLast24h} type="button">
+                  {exportBusy ? "Preparing export…" : "Download last 24h export"}
+                </button>
+
+                <div className="panelMeta">
+                  For large exports, specify an explicit time window (createdAfter/createdBefore). Export limits may enforce time windows for safety.
+                </div>
+              </div>
+            </section>
+          </div>
 
           <footer className="footer">
             <div>© {new Date().getFullYear()} Kojib · PBI</div>
@@ -527,15 +799,7 @@ function latestMonthKey(rows: UsageRow[]): string | null {
   );
 }
 
-function KPI({
-  label,
-  value,
-  tone
-}: {
-  label: string;
-  value: string;
-  tone?: "ok" | "danger";
-}) {
+function KPI({ label, value, tone }: { label: string; value: string; tone?: "ok" | "danger" }) {
   return (
     <div className={`kpi ${tone === "danger" ? "kpiDanger" : ""}`}>
       <div className="kpiLabel">{label}</div>
@@ -721,19 +985,6 @@ body{ margin:0; overflow-x:hidden; }
 }
 .pillDot{ width: 9px; height: 9px; border-radius:999px; background: var(--mint); box-shadow: 0 0 0 5px rgba(120,255,231,.10); }
 
-.h1{
-  margin-top: 10px;
-  margin-bottom: 0;
-  font-weight: 950;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  font-size: 30px;
-}
-.h1.email{
-  overflow-wrap:anywhere;
-  word-break: break-word;
-}
-
 .lead{
   margin-top: 8px;
   color: rgba(255,255,255,.76);
@@ -748,13 +999,13 @@ body{ margin:0; overflow-x:hidden; }
   grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 10px;
 }
+.kpiRow5{ grid-template-columns: repeat(5, minmax(0,1fr)); }
+
 @media (max-width: 980px){
   .kpiRow{ grid-template-columns: 1fr 1fr; }
+  .kpiRow5{ grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 420px){
-  .h1{ font-size: 26px; }
-  .kpiRow{ gap: 8px; }
-}
+
 .kpi{
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,.12);
@@ -765,6 +1016,7 @@ body{ margin:0; overflow-x:hidden; }
 }
 .kpiLabel{ font-size: 11px; color: rgba(255,255,255,.56); }
 .kpiValue{ margin-top: 6px; font-weight: 950; letter-spacing: .2px; }
+.kpiDanger{ border-color: rgba(255,138,160,.35); background: rgba(255,138,160,.08); }
 
 /* Pending callout */
 .pendingCallout{
@@ -869,6 +1121,23 @@ body{ margin:0; overflow-x:hidden; }
   background: rgba(255,255,255,.06);
 }
 
+/* Inputs */
+.textInput{
+  flex: 1 1 360px;
+  min-width: 240px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+  color: rgba(255,255,255,.92);
+  padding: 10px 12px;
+  outline: none;
+}
+.textInput::placeholder{ color: rgba(255,255,255,.45); }
+.textInput:focus{
+  border-color: rgba(120,255,231,.40);
+  box-shadow: 0 0 0 4px rgba(120,255,231,.10);
+}
+
 /* Desktop aside */
 .side{
   border-radius: 22px;
@@ -899,7 +1168,6 @@ body{ margin:0; overflow-x:hidden; }
 .divider{ height: 1px; background: rgba(255,255,255,.10); margin: 4px 0; }
 .priceTitle{ font-weight: 950; }
 .planBtns{ display:grid; gap: 8px; }
-.planBtns button{ width: 100%; }
 
 /* Mobile “one screen dashboard” */
 .mobileQuick{ display:none; }
@@ -948,11 +1216,10 @@ body{ margin:0; overflow-x:hidden; }
     padding: 11px 14px;
     font-weight: 950;
     text-decoration:none;
-  }
-  .linkBtn{
     border: 1px solid rgba(255,255,255,.14);
     background: rgba(255,255,255,.06);
     color: rgba(255,255,255,.92);
+    cursor: pointer;
   }
   .linkBtnPrimary{
     border: 1px solid rgba(120,255,231,.55);
@@ -983,9 +1250,8 @@ body{ margin:0; overflow-x:hidden; }
   }
 }
 
-/* Desktop tables */
+/* Desktop panels */
 .grid{ display:grid; grid-template-columns: 1fr; gap: 14px; }
-
 .panel{
   border-radius: 22px;
   border: 1px solid rgba(255,255,255,.12);
@@ -1026,33 +1292,6 @@ body{ margin:0; overflow-x:hidden; }
 .muted{ opacity:.75; }
 .mutedSmall{ font-size: 11px; opacity: .6; margin-top: 4px; overflow-wrap:anywhere; }
 
-.status{
-  display:inline-flex; align-items:center;
-  font-size: 11px; font-weight: 950; letter-spacing: .35px;
-  padding: 6px 10px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(0,0,0,.20);
-}
-.status.ok{ border-color: rgba(120,255,231,.28); background: rgba(120,255,231,.08); }
-.status.off{ border-color: rgba(255,255,255,.16); opacity: .75; }
-
-.usageKpis{
-  margin-top: 10px;
-  display:flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.usageChip{
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.20);
-  padding: 10px 12px;
-  min-width: 0;
-  max-width:100%;
-}
-.usageKind{ font-size: 12px; opacity:.75; }
-.usageTotal{ margin-top: 6px; font-weight: 950; }
-
 .footer{
   margin-top: 12px;
   display:flex;
@@ -1066,10 +1305,4 @@ body{ margin:0; overflow-x:hidden; }
 .footerLinks{ display:flex; gap: 12px; flex-wrap: wrap; }
 .footer a{ color: rgba(120,255,231,.9); }
 .footer a:hover{ text-decoration: underline; }
-
-/* Mobile table fallback */
-@media (max-width: 820px){
-  .trow{ grid-template-columns: 1fr; }
-  .right{ text-align:left; }
-}
 `;

@@ -43,6 +43,19 @@ export default function ChangelogPage() {
   // Newest first (enterprise expectation)
   const entries: ChangelogEntry[] = [
     {
+      version: "v1.4.0",
+      title: "Portal enterprise controls: webhooks + signed evidence exports (self-serve)",
+      dateISO: "2026-01-21",
+      tags: ["Portal", "Compliance", "Enterprise UX"],
+      bullets: [
+        "New portal export endpoint: GET /v1/portal/receipts/export — cookie-auth evidence exports (no API keys in browser).",
+        "Customer dashboard upgraded with Enterprise Controls: configure receipt.created webhooks and download signed evidence packs from the console.",
+        "Portal API keys response now surfaces governance metadata (scopes, last_used_at, last_used_ip) for compliance review workflows.",
+        "Webhook secrets are shown once (create + rotate) and designed for secure verifier integration.",
+        "Export packs remain offline-verifiable (manifest hashes + Ed25519 signature + verification.json) with time-window enforcement for large exports."
+      ]
+    },
+    {
       version: "v1.3.0",
       title: "Production hardening: resilient webhooks, deterministic exports, safer ops",
       dateISO: "2026-01-21",
