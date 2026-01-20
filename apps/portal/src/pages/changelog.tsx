@@ -13,6 +13,8 @@ type AuthState = "unknown" | "logged_out" | "logged_in";
 type ChangelogEntry = {
   version: string;
   title: string;
+  // optional; keep backward compatible with current renderer
+  dateISO?: string; // "2026-01-19"
   bullets: string[];
 };
 
@@ -38,10 +40,31 @@ export default function ChangelogPage() {
   const pageUrl = useMemo(() => `${SITE_URL}/changelog`, []);
   const ogImage = `${SITE_URL}/pbi_1.png`;
 
+  // NOTE: newest first (production expectation for changelog)
   const entries: ChangelogEntry[] = [
+    {
+      version: "v1.1.0",
+      title: "Audit-friendly receipts listing + richer receipt context",
+      dateISO: "2026-01-19",
+      bullets: [
+        "New endpoint: GET /v1/pbi/receipts — customer-facing receipts listing designed for audit/export workflows.",
+        "Cursor-based pagination added for receipt listings (nextCursor).",
+        "Receipt listing supports filters: actionHashHex, challengeId, purpose, decision, limit.",
+        "Each receipts list item returns receipt + associated challenge metadata (challenge context included when available).",
+        "Receipt detail endpoints now include an embedded challenge object when available:",
+        "• GET /v1/pbi/challenges/{challengeId}/receipt",
+        "• GET /v1/pbi/receipts/{receiptId}",
+        "OpenAPI updated to document receipts listing, combined receipt+challenge schemas, metering fields, and expanded error coverage (invalid requests, quota, unknown challenge IDs).",
+        "README updated to include the receipts listing endpoint in the core API surface.",
+        "Portal homepage updated: API Docs card now surfaces receipts endpoints for customer visibility.",
+        "Internal: strengthened typing around receipt/challenge date handling to prevent invalid date parsing (no customer-facing behavior change).",
+        "Backward compatible: no breaking changes; existing integrations continue to work as-is.",
+      ],
+    },
     {
       version: "v1.0.0",
       title: "Initial public release",
+      dateISO: "2026-01-15",
       bullets: [
         "Presence-bound challenge → UP+UV verify → receipt model",
         "Action-hash binding and non-replayable challenge semantics",
@@ -51,11 +74,21 @@ export default function ChangelogPage() {
     },
   ];
 
+  function fmtDateLabel(iso: string | undefined): string {
+    if (!iso) return "";
+    // Keep it deterministic + safe: if parsing fails, fall back to raw ISO.
+    const d = new Date(iso);
+    return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" }) : iso;
+  }
+
   return (
     <>
       <Head>
         <title>Changelog · PBI</title>
-        <meta name="description" content="PBI changelog and release policy: versioning, compatibility, and breaking change discipline." />
+        <meta
+          name="description"
+          content="PBI changelog and release policy: versioning, compatibility, and breaking change discipline."
+        />
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index,follow" />
         <link rel="icon" href="/favicon.ico" />
@@ -88,8 +121,8 @@ export default function ChangelogPage() {
                   </h1>
 
                   <p className="pbi-lead">
-                    Enterprises integrate primitives only when changes are predictable. This page explains versioning and compatibility expectations, plus
-                    product changes.
+                    Enterprises integrate primitives only when changes are predictable. This page explains versioning and
+                    compatibility expectations, plus product changes.
                   </p>
 
                   <div className="pbi-ctaRow">
@@ -132,13 +165,23 @@ export default function ChangelogPage() {
             </section>
 
             <section className="pbi-section">
-              <SectionHead kicker="Release policy" title="Compatibility expectations" body="Written for enterprise engineering and security review teams." />
+              <SectionHead
+                kicker="Release policy"
+                title="Compatibility expectations"
+                body="Written for enterprise engineering and security review teams."
+              />
 
               <div style={{ display: "grid", gap: 10 }}>
                 <ProofRow k="Versioned API" v="Major behavioral changes require a versioned endpoint path (e.g., /v2)." />
                 <ProofRow k="Additive changes first" v="New fields are added without breaking existing clients wherever possible." />
-                <ProofRow k="Explicit semantics" v="Decision values, enforcement rules, and replay constraints are documented in the API reference." />
-                <ProofRow k="Migration guidance" v="When versions change, migration notes describe diffs and recommended rollout sequencing." />
+                <ProofRow
+                  k="Explicit semantics"
+                  v="Decision values, enforcement rules, and replay constraints are documented in the API reference."
+                />
+                <ProofRow
+                  k="Migration guidance"
+                  v="When versions change, migration notes describe diffs and recommended rollout sequencing."
+                />
               </div>
             </section>
 
@@ -146,31 +189,48 @@ export default function ChangelogPage() {
               <SectionHead kicker="Changelog" title="Product updates" body="High-signal changes only—no noise." />
 
               <div style={{ display: "grid", gap: 10 }}>
-                {entries.map((e) => (
-                  <div key={e.version} className="pbi-card" style={{ padding: 14 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                      <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
-                        {e.version} · {e.title}
-                      </div>
-                      <div className="pbi-sideTag">Release</div>
-                    </div>
-
-                    <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                      {e.bullets.map((b) => (
-                        <div key={b} className="pbi-bullet" style={{ color: "rgba(255,255,255,.82)" }}>
-                          <span className="pbi-bulletDot">•</span>
-                          <span>{b}</span>
+                {entries.map((e) => {
+                  const dateLabel = fmtDateLabel(e.dateISO);
+                  return (
+                    <div key={e.version} className="pbi-card" style={{ padding: 14 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div className="pbi-cardTitle" style={{ fontSize: 18 }}>
+                          {e.version} · {e.title}
+                          {dateLabel ? (
+                            <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,.58)" }}>
+                              {dateLabel}
+                            </span>
+                          ) : null}
                         </div>
-                      ))}
+                        <div className="pbi-sideTag">Release</div>
+                      </div>
+
+                      <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                        {e.bullets.map((b) => (
+                          <div key={b} className="pbi-bullet" style={{ color: "rgba(255,255,255,.82)" }}>
+                            <span className="pbi-bulletDot">•</span>
+                            <span>{b}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="pbi-card" style={{ marginTop: 14 }}>
                 <div className="pbi-cardTitle">Enterprise change review</div>
                 <div className="pbi-cardBody" style={{ marginTop: 6 }}>
-                  Enterprises can request change review expectations, environment separation guidance, and rollout sequencing via <a href="/enterprise">/enterprise</a>.
+                  Enterprises can request change review expectations, environment separation guidance, and rollout
+                  sequencing via <a href="/enterprise">/enterprise</a>.
                 </div>
               </div>
             </section>
@@ -264,7 +324,9 @@ function ProofRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="pbi-card" style={{ padding: 12, borderRadius: 18 }}>
       <div className="pbi-proofLabel">{k}</div>
-      <div style={{ marginTop: 6, color: "rgba(255,255,255,.82)", fontSize: 13, lineHeight: 1.45, textAlign: "right" }}>{v}</div>
+      <div style={{ marginTop: 6, color: "rgba(255,255,255,.82)", fontSize: 13, lineHeight: 1.45, textAlign: "right" }}>
+        {v}
+      </div>
     </div>
   );
 }
