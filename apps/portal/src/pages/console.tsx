@@ -30,9 +30,15 @@ const ROLLOUT_URL = "/enterprise/rollout";
 const WEBHOOKS_URL = "/console/webhooks";
 const EXPORTS_URL = "/console/exports";
 
+const API_DOCS_URL = "https://api.kojib.com/docs";
+const DEMO_URL = "https://demo.kojib.com";
+const TOOL_URL = "https://tool.kojib.com";
+
 const SDK_PACKAGE = "presencebound-sdk";
 const SDK_NPM_URL = `https://www.npmjs.com/package/${SDK_PACKAGE}`;
 const SDK_PAGE_URL = "/sdk";
+const SDK_EXAMPLE_URL =
+  "https://github.com/kojibai/pbi-enterprise-api/tree/main/packages/presencebound-sdk/examples/node-sdk";
 
 function normalizePlan(raw: unknown): { planKey: PlanKey; uiLabel: string; isPending: boolean } {
   const s = String(raw ?? "").toLowerCase().trim();
@@ -252,20 +258,26 @@ export default function Home() {
               Guide
             </a>
 
+            {/* No duplication: "SDK" points to canonical docs page */}
             <a className="navLink" href={SDK_PAGE_URL}>
               SDK
             </a>
 
+            {/* npm is distribution, not docs */}
             <a className="navLink" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
               npm
             </a>
 
-            <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+            <a className="navLink" href={API_DOCS_URL} target="_blank" rel="noreferrer">
+              API Docs
+            </a>
+
+            <a className="navLink" href={DEMO_URL} target="_blank" rel="noreferrer">
               Demo
             </a>
 
             {!isPending ? (
-              <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+              <a className="navLink" href={TOOL_URL} target="_blank" rel="noreferrer">
                 Attester Tool
               </a>
             ) : null}
@@ -380,20 +392,23 @@ export default function Home() {
                   </div>
                 ) : null}
 
-                {/* NEW: SDK callout (links only) */}
+                {/* SDK card: avoids duplicate links; each link has a distinct purpose */}
                 <div className="sdkCard" role="region" aria-label="SDK">
                   <div className="sdkTop">
                     <div>
                       <div className="sdkKicker">Developers</div>
                       <div className="sdkTitle">Official SDK</div>
                       <div className="sdkSub">
-                        Install, quickstart, errors, compatibility, and the end-to-end ceremony example.
+                        Canonical SDK documentation lives on <b>/sdk</b>. npm is distribution. Examples show end-to-end ceremony.
                       </div>
                     </div>
 
                     <div className="sdkActions">
                       <a className="btnPrimary" href={SDK_PAGE_URL}>
-                        SDK →
+                        SDK docs →
+                      </a>
+                      <a className="btnGhost" href={SDK_EXAMPLE_URL} target="_blank" rel="noreferrer">
+                        Example →
                       </a>
                       <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                         npm →
@@ -402,7 +417,8 @@ export default function Home() {
                   </div>
 
                   <div className="sdkFoot">
-                    Recommended for most teams: use the SDK for typed integration and consistent error semantics.
+                    Start with <a href={SDK_PAGE_URL}>/sdk</a> for install + quickstart + errors + compatibility. Use the example for a working
+                    WebAuthn → verify flow.
                   </div>
                 </div>
 
@@ -419,10 +435,10 @@ export default function Home() {
 
                   <div className="mobileCard">
                     <div className="kicker">Developers</div>
-                    <div className="mobileTitle">Official SDK</div>
-                    <div className="hint">Docs + examples + install.</div>
+                    <div className="mobileTitle">SDK docs</div>
+                    <div className="hint">Install + quickstart + errors + compatibility.</div>
                     <a className="linkBtnPrimary" href={SDK_PAGE_URL}>
-                      SDK →
+                      /sdk →
                     </a>
                     <a className="linkBtn" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
                       npm →
@@ -514,7 +530,7 @@ export default function Home() {
 
                     <a
                       className="linkBtnPrimary"
-                      href={isPending ? "https://demo.kojib.com" : "https://tool.kojib.com"}
+                      href={isPending ? DEMO_URL : TOOL_URL}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -608,15 +624,12 @@ export default function Home() {
                       Rollout guide →
                     </a>
                     <a className="btnGhost" href={SDK_PAGE_URL}>
-                      SDK →
-                    </a>
-                    <a className="btnGhost" href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-                      npm →
+                      SDK docs →
                     </a>
                   </div>
 
                   <div className="hint" style={{ marginTop: 10 }}>
-                    Configure integrations and exports on dedicated pages designed for enterprise workflows.
+                    Developer entry point is the SDK page. Use npm only for distribution.
                   </div>
                 </div>
               </aside>
@@ -633,8 +646,8 @@ export default function Home() {
               <a href={EXPORTS_URL}>Exports</a>
               <a href={ROLLOUT_URL}>Guide</a>
               <a href={SDK_PAGE_URL}>SDK</a>
-              <a href={SDK_NPM_URL} target="_blank" rel="noreferrer">
-                npm
+              <a href={API_DOCS_URL} target="_blank" rel="noreferrer">
+                API Docs
               </a>
             </div>
           </footer>
@@ -974,7 +987,7 @@ body{ margin:0; overflow-x:hidden; }
   background: rgba(255,255,255,.06);
 }
 
-/* NEW: SDK link card */
+/* SDK card */
 .sdkCard{
   margin-top: 12px;
   border-radius: 22px;
@@ -1015,6 +1028,8 @@ body{ margin:0; overflow-x:hidden; }
   color: rgba(255,255,255,.74);
   line-height: 1.55;
 }
+.sdkFoot a{ color: rgba(120,255,231,.92); text-decoration:none; font-weight: 900; }
+.sdkFoot a:hover{ text-decoration: underline; }
 
 /* Desktop aside */
 .side{
