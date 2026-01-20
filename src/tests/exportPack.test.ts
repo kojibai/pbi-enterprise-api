@@ -28,7 +28,9 @@ test("export pack builds manifest with matching hashes", () => {
 
   const receiptsFile = pack.files.find((file) => file.name === "receipts.ndjson");
   assert.ok(receiptsFile);
-  assert.equal(pack.manifest.files["receipts.ndjson"].sha256, receiptsFile.sha256);
+  const manifestEntry = pack.manifest.files["receipts.ndjson"];
+  assert.ok(manifestEntry);
+  assert.equal(manifestEntry.sha256, receiptsFile.sha256);
 });
 
 test("export pack signature verifies with public key", () => {

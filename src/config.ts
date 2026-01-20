@@ -30,7 +30,7 @@ export type Config = {
   trustSnapshotPath?: string;
 };
 
-export const config: Config = {
+const baseConfig: Config = {
   nodeEnv: (process.env.NODE_ENV ?? "development") as Config["nodeEnv"],
   port: Number(process.env.PORT ?? "8080"),
   databaseUrl: mustGet("DATABASE_URL"),
@@ -40,11 +40,20 @@ export const config: Config = {
     .filter((s) => s.length > 0),
   receiptSecret: mustGet("PBI_RECEIPT_SECRET"),
   rlWindowSeconds: Number(process.env.RL_WINDOW_SECONDS ?? "60"),
-  rlMaxRequests: Number(process.env.RL_MAX_REQUESTS ?? "300"),
-  policyVersion: optionalEnv("PBI_POLICY_VERSION"),
-  policyHash: optionalEnv("PBI_POLICY_HASH"),
-  exportSigningPrivateKeyPem: optionalEnv("PBI_EXPORT_SIGNING_PRIVATE_KEY_PEM"),
-  exportSigningPublicKeyPem: optionalEnv("PBI_EXPORT_SIGNING_PUBLIC_KEY_PEM"),
-  webhookSecretKey: optionalEnv("PBI_WEBHOOK_SECRET_KEY"),
-  trustSnapshotPath: optionalEnv("PBI_TRUST_SNAPSHOT_PATH")
+  rlMaxRequests: Number(process.env.RL_MAX_REQUESTS ?? "300")
 };
+
+const optionalConfig: Partial<Config> = {
+  ...(optionalEnv("PBI_POLICY_VERSION") ? { policyVersion: optionalEnv("PBI_POLICY_VERSION")! } : {}),
+  ...(optionalEnv("PBI_POLICY_HASH") ? { policyHash: optionalEnv("PBI_POLICY_HASH")! } : {}),
+  ...(optionalEnv("PBI_EXPORT_SIGNING_PRIVATE_KEY_PEM")
+    ? { exportSigningPrivateKeyPem: optionalEnv("PBI_EXPORT_SIGNING_PRIVATE_KEY_PEM")! }
+    : {}),
+  ...(optionalEnv("PBI_EXPORT_SIGNING_PUBLIC_KEY_PEM")
+    ? { exportSigningPublicKeyPem: optionalEnv("PBI_EXPORT_SIGNING_PUBLIC_KEY_PEM")! }
+    : {}),
+  ...(optionalEnv("PBI_WEBHOOK_SECRET_KEY") ? { webhookSecretKey: optionalEnv("PBI_WEBHOOK_SECRET_KEY")! } : {}),
+  ...(optionalEnv("PBI_TRUST_SNAPSHOT_PATH") ? { trustSnapshotPath: optionalEnv("PBI_TRUST_SNAPSHOT_PATH")! } : {})
+};
+
+export const config: Config = { ...baseConfig, ...optionalConfig };

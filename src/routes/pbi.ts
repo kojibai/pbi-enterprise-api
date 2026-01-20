@@ -18,6 +18,14 @@ import { config } from "../config.js";
 import fs from "node:fs";
 import { logger } from "../util/logger.js";
 import { createZipFromFiles } from "../util/zip.js";
+import type { VerifierInfo } from "../pbi/evidence.js";
+
+function evidenceParams(traceId: string | undefined, verifier?: VerifierInfo): { traceId?: string; verifier?: VerifierInfo } {
+  return {
+    ...(traceId ? { traceId } : {}),
+    ...(verifier ? { verifier } : {})
+  };
+}
 
 export const pbiRouter = Router();
 
@@ -144,7 +152,7 @@ pbiRouter.post(
     }
 
     const ch = await createChallenge(apiKey.id, purpose, body.actionHashHex, ttlSeconds);
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     const challengePayload = withEvidenceMetadata(ch, evidence);
 
     // Keep response backward-friendly:
@@ -204,7 +212,7 @@ pbiRouter.post(
       assertion: body.assertion
     });
 
-    const verifier =
+    const verifier: VerifierInfo | undefined =
       typeof v.up === "boolean" && typeof v.uv === "boolean"
         ? { method: "webauthn", up: v.up, uv: v.uv }
         : undefined;
@@ -237,7 +245,7 @@ pbiRouter.post(
     await storeReceipt(apiKey.id, stored.id, "PBI_VERIFIED", receipt);
 
     const createdAtIso = new Date().toISOString();
-    const evidence = buildEvidenceMetadata({ traceId, verifier });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId, verifier));
 
     const receiptPayload = withEvidenceMetadata(
       {
@@ -250,13 +258,15 @@ pbiRouter.post(
       evidence
     );
 
+    const storedUsedAt = stored.usedAt as Date | null;
+    const usedAtIso = storedUsedAt ? storedUsedAt.toISOString() : null;
     const challengePayload = withEvidenceMetadata(
       {
         id: stored.id,
         purpose: stored.purpose,
         actionHashHex: stored.actionHashHex,
         expiresAtIso: stored.expiresAt.toISOString(),
-        usedAtIso: stored.usedAt ? stored.usedAt.toISOString() : null
+        usedAtIso
       },
       evidence
     );
@@ -308,7 +318,7 @@ pbiRouter.get(
     const now = new Date();
     const status = stored.usedAt ? "used" : now > stored.expiresAt ? "expired" : "active";
 
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     res.json({
       challenge: withEvidenceMetadata(
         {
@@ -344,7 +354,7 @@ pbiRouter.get(
     }
 
     const challenge = await getChallenge(challengeId);
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     const challengePayload = challenge
       ? withEvidenceMetadata(
           {
@@ -404,20 +414,22 @@ pbiRouter.get(
       return;
     }
 
-    const { text, values } = buildReceiptQuery({
+    const exportFilters = {
       apiKeyId: apiKey.id,
       limit,
       order,
-      actionHashHex: params.actionHashHex,
-      challengeId: params.challengeId,
-      purpose: params.purpose,
-      decision: params.decision,
-      createdAfter: params.createdAfter,
-      createdBefore: params.createdBefore
-    });
+      ...(params.actionHashHex ? { actionHashHex: params.actionHashHex } : {}),
+      ...(params.challengeId ? { challengeId: params.challengeId } : {}),
+      ...(params.purpose ? { purpose: params.purpose } : {}),
+      ...(params.decision ? { decision: params.decision } : {}),
+      ...(params.createdAfter ? { createdAfter: params.createdAfter } : {}),
+      ...(params.createdBefore ? { createdBefore: params.createdBefore } : {})
+    };
+
+    const { text, values } = buildReceiptQuery(exportFilters);
 
     const rows = await pool.query(text, values);
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
 
     const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
       const challengeRowId = row.challenge_row_id as string | null;
@@ -474,15 +486,17 @@ pbiRouter.get(
       decision: params.decision ?? null
     };
 
+    const signingKey = {
+      privateKeyPem: config.exportSigningPrivateKeyPem,
+      ...(config.exportSigningPublicKeyPem ? { publicKeyPem: config.exportSigningPublicKeyPem } : {})
+    };
+
     const pack = buildExportPack({
       receipts,
       filters,
       policySnapshot,
-      trustSnapshot,
-      signingKey: {
-        privateKeyPem: config.exportSigningPrivateKeyPem,
-        publicKeyPem: config.exportSigningPublicKeyPem
-      }
+      ...(trustSnapshot ? { trustSnapshot } : {}),
+      signingKey
     });
 
     const zipFiles = [
@@ -532,7 +546,7 @@ pbiRouter.get(
       [receipt.challengeId, apiKey.id]
     );
 
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     const challenge = challengeRow.rowCount
       ? withEvidenceMetadata(
           {
@@ -587,7 +601,7 @@ pbiRouter.post(
 
     const ok = receipt.receiptHashHex === receiptHashHex;
 
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     res.json({
       ok,
       receipt: withEvidenceMetadata(
@@ -619,21 +633,23 @@ pbiRouter.get(
     const limit = params.limit ?? 50;
     const order = params.order;
 
-    const { text, values } = buildReceiptQuery({
+    const listFilters = {
       apiKeyId: apiKey.id,
       limit,
       order,
-      cursor: params.cursor,
-      actionHashHex: params.actionHashHex,
-      challengeId: params.challengeId,
-      purpose: params.purpose,
-      decision: params.decision,
-      createdAfter: params.createdAfter,
-      createdBefore: params.createdBefore
-    });
+      ...(params.cursor ? { cursor: params.cursor } : {}),
+      ...(params.actionHashHex ? { actionHashHex: params.actionHashHex } : {}),
+      ...(params.challengeId ? { challengeId: params.challengeId } : {}),
+      ...(params.purpose ? { purpose: params.purpose } : {}),
+      ...(params.decision ? { decision: params.decision } : {}),
+      ...(params.createdAfter ? { createdAfter: params.createdAfter } : {}),
+      ...(params.createdBefore ? { createdBefore: params.createdBefore } : {})
+    };
+
+    const { text, values } = buildReceiptQuery(listFilters);
 
     const rows = await pool.query(text, values);
-    const evidence = buildEvidenceMetadata({ traceId });
+    const evidence = buildEvidenceMetadata(evidenceParams(traceId));
     const receipts = (rows.rows as Array<Record<string, unknown>>).map((row) => {
       const challengeRowId = row.challenge_row_id as string | null;
       const challenge =
