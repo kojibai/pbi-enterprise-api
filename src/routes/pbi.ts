@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AuthedRequest } from "../middleware/apiKeyAuth.js";
 import { createChallenge, getChallenge, markChallengeUsed } from "../pbi/challengeStore.js";
 import { verifyWebAuthnAssertion } from "../pbi/verify.js";
-import { mintReceipt } from "../pbi/receipt.js";
+import { getReceiptById, mintReceipt, storeReceipt } from "../pbi/receipt.js";
 import { consumeQuotaUnit } from "../billing/quota.js";
 
 export const pbiRouter = Router();
@@ -175,6 +175,7 @@ pbiRouter.post(
     await markChallengeUsed(stored.id);
 
     const receipt = mintReceipt(stored.id, "PBI_VERIFIED");
+    await storeReceipt(apiKey.id, stored.id, "PBI_VERIFIED", receipt);
 
     res.json({
       ok: true,
@@ -183,6 +184,35 @@ pbiRouter.post(
       receiptHashHex: receipt.receiptHashHex,
       challenge: { id: stored.id, purpose: stored.purpose, actionHashHex: stored.actionHashHex },
       metering: { month: q.monthKey, used: q.usedAfter.toString(), quota: q.quota.toString() }
+    });
+  })
+);
+
+pbiRouter.get(
+  "/receipts/:id",
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const apiKey = req.apiKey!;
+    const receiptId = String(req.params.id ?? "").trim();
+
+    if (!receiptId) {
+      res.status(400).json({ error: "invalid_receipt_id" });
+      return;
+    }
+
+    const receipt = await getReceiptById(apiKey.id, receiptId);
+    if (!receipt) {
+      res.status(404).json({ error: "receipt_not_found" });
+      return;
+    }
+
+    res.json({
+      receipt: {
+        id: receipt.id,
+        challengeId: receipt.challengeId,
+        receiptHashHex: receipt.receiptHashHex,
+        decision: receipt.decision,
+        createdAt: receipt.createdAt
+      }
     });
   })
 );

@@ -9,6 +9,7 @@ import { requestId } from "./middleware/requestId.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { apiKeyAuth } from "./middleware/apiKeyAuth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { config } from "./config.js";
 
 import { publicRouter } from "./routes/public.js";
 import { healthRouter } from "./routes/health.js";
@@ -39,8 +40,8 @@ export function makeApp() {
   // Cookies for portal sessions
   app.use(cookieParser());
 
-app.use(express.static(path.join(process.cwd(), "public")));
-app.use(express.static(publicDir));
+  app.use(express.static(path.join(process.cwd(), "public")));
+  app.use(express.static(publicDir));
 
   // Helmet + CSP (supports Redoc on mobile via blob workers)
   app.use(
@@ -73,44 +74,24 @@ app.use(express.static(publicDir));
   );
 
   // CORS for portal (credentials required for cookies)
-// CORS
-const allowedOrigins = new Set<string>([
-  "https://pbi.kojib.com",
-  "https://tool.kojib.com",
-  "https://demo.kojib.com",
-  "http://localhost:3000",
-  "http://localhost:5173",
+  const allowedOrigins = new Set<string>(config.allowedOrigins);
 
-  
-]);
+  const corsOptions: cors.CorsOptions = {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // server-to-server / curl
+      if (allowedOrigins.has(origin)) return cb(null, origin); // echo the origin (not boolean)
+      return cb(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["authorization", "content-type"],
+    optionsSuccessStatus: 204,
+    maxAge: 86400
+  };
 
-const corsOptions: cors.CorsOptions = {
-  
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // server-to-server / curl
-    if (allowedOrigins.has(origin)) return cb(null, origin); // echo the origin (not boolean)
-    return cb(null, false);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["authorization", "content-type"],
-  optionsSuccessStatus: 204,
-  maxAge: 86400
-};
-
-// Handle preflight explicitly (before auth routes)
-app.options("*", cors(corsOptions));
-app.use(cors(corsOptions));
-
-  app.use(
-    cors({
-      origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        return cb(null, allowedOrigins.has(origin));
-      },
-      credentials: true
-    })
-  );
+  // Handle preflight explicitly (before auth routes)
+  app.options("*", cors(corsOptions));
+  app.use(cors(corsOptions));
 
   app.use(express.json({ limit: "1mb" }));
 

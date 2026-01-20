@@ -28,6 +28,12 @@ components:
           type: string
       required: [error]
 
+    OkResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+      required: [ok]
+
     PBIChallenge:
       type: object
       properties:
@@ -134,6 +140,114 @@ components:
             required: [id, month, status, totalCents, lineItems, createdAt]
       required: [invoices]
 
+    Receipt:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeId: { type: string, format: uuid }
+        receiptHashHex: { type: string }
+        decision:
+          type: string
+          enum: [PBI_VERIFIED, FAILED, EXPIRED, REPLAYED]
+        createdAt: { type: string, format: date-time }
+      required: [id, challengeId, receiptHashHex, decision, createdAt]
+
+    ReceiptResponse:
+      type: object
+      properties:
+        receipt:
+          $ref: "#/components/schemas/Receipt"
+      required: [receipt]
+
+    PortalAuthStartRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+      required: [email]
+
+    PortalAuthConsumeRequest:
+      type: object
+      properties:
+        token: { type: string }
+      required: [token]
+
+    PortalMeResponse:
+      type: object
+      properties:
+        customer:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: string, format: email }
+            plan: { type: string }
+            quotaPerMonth: { type: string }
+          required: [id, email, plan, quotaPerMonth]
+      required: [customer]
+
+    PortalApiKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        plan: { type: string }
+        quota_per_month: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+      required: [id, label, is_active, created_at]
+
+    PortalApiKeysResponse:
+      type: object
+      properties:
+        apiKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalApiKey"
+      required: [apiKeys]
+
+    PortalUsageResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              month_key: { type: string }
+              kind: { type: string }
+              total: { type: string }
+            required: [month_key, kind, total]
+      required: [rows]
+
+    PortalInvoicesResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              month: { type: string }
+              status: { type: string }
+              totalCents: { type: string }
+              lineItems: { type: object }
+              createdAt: { type: string, format: date-time }
+              finalizedAt: { type: string, format: date-time, nullable: true }
+            required: [id, month, status, totalCents, lineItems, createdAt]
+      required: [invoices]
+
+    StripeCheckoutRequest:
+      type: object
+      properties:
+        priceId: { type: string }
+      required: [priceId]
+
+    StripeCheckoutResponse:
+      type: object
+      properties:
+        url: { type: string }
+      required: [url]
+
 security:
   - ApiKeyBearer: []
 
@@ -191,6 +305,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VerifyResponse" }
 
+  /v1/pbi/receipts/{receiptId}:
+    get:
+      summary: Fetch a receipt by id
+      parameters:
+        - in: path
+          name: receiptId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptResponse" }
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
   /v1/billing/usage:
     get:
       summary: Usage for current or requested month
@@ -217,4 +353,167 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/InvoicesResponse" }
+
+  /v1/portal/auth/start:
+    post:
+      security: []
+      summary: Start portal login (magic link)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalAuthStartRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+
+  /v1/portal/auth/consume:
+    post:
+      security: []
+      summary: Consume magic link token and set session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortalAuthConsumeRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+
+  /v1/portal/auth/logout:
+    post:
+      security: []
+      summary: Logout and clear portal session
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+
+  /v1/portal/me:
+    get:
+      security: []
+      summary: Portal session identity
+      responses:
+        "200":
+          description: Portal identity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalMeResponse" }
+
+  /v1/portal/api-keys:
+    get:
+      security: []
+      summary: List portal API keys
+      responses:
+        "200":
+          description: API keys
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalApiKeysResponse" }
+    post:
+      security: []
+      summary: Create a portal API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  apiKeyId: { type: string, format: uuid }
+                  rawApiKey: { type: string }
+                required: [ok, apiKeyId, rawApiKey]
+
+  /v1/portal/api-keys/{id}:
+    delete:
+      security: []
+      summary: Revoke portal API key
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+
+  /v1/portal/usage:
+    get:
+      security: []
+      summary: Portal usage summary
+      parameters:
+        - in: query
+          name: month
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-[0-9]{2}$"
+      responses:
+        "200":
+          description: Usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalUsageResponse" }
+
+  /v1/portal/invoices:
+    get:
+      security: []
+      summary: Portal invoices
+      responses:
+        "200":
+          description: Invoices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInvoicesResponse" }
+
+  /v1/stripe/checkout:
+    post:
+      security: []
+      summary: Create a Stripe checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StripeCheckoutRequest" }
+      responses:
+        "200":
+          description: Checkout created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StripeCheckoutResponse" }
+
+  /v1/stripe/webhook:
+    post:
+      security: []
+      summary: Stripe webhook endpoint
+      responses:
+        "200":
+          description: Accepted
               
