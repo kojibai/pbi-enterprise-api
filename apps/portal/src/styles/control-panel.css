@@ -1,8 +1,6 @@
 /* /apps/portal/src/styles/control-panel.css */
 /* PBI Client Control Panel — premium dark glass, readable everywhere */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
 :root {
   --bg0: #05070e;
   --bg1: #070b18;

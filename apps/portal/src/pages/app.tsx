@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
+import { normalizePlan } from "../lib/plan"; 
 
 type Me = { customer: { id: string; email: string; plan: string; quotaPerMonth: string } };
 type ApiKeyRow = { id: string; label: string; plan: string; quota_per_month: string; is_active: boolean; created_at: string };
@@ -11,6 +12,8 @@ export default function Home() {
   const [usage, setUsage] = useState<UsageRow[]>([]);
   const [rawKey, setRawKey] = useState<string>("");
 
+const { planKey, uiLabel } = normalizePlan(me?.customer.plan);
+const planUpper = uiLabel.toUpperCase();
   async function load() {
     const m = await apiJson<Me>("/v1/portal/me");
     setMe(m);
