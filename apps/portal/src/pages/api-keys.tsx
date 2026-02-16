@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
@@ -64,7 +66,7 @@ export default function ApiKeysPage() {
   const activeKeys = useMemo(() => keys.filter((k) => k.is_active), [keys]);
   const revokedKeys = useMemo(() => keys.filter((k) => !k.is_active), [keys]);
 
-  async function load() {
+  async function load(opts?: { preserveRawKey?: boolean }) {
     setErr("");
     setLoading(true);
     try {
@@ -75,7 +77,8 @@ export default function ApiKeysPage() {
       const list = (k.apiKeys ?? k.keys ?? []) as ApiKeyRow[];
       setKeys(Array.isArray(list) ? list : []);
 
-      setRawKey("");
+      // ✅ Only clear the one-time secret when we explicitly want to close it
+      if (!opts?.preserveRawKey) setRawKey("");
     } catch {
       window.location.href = "/login";
     } finally {
@@ -105,18 +108,21 @@ export default function ApiKeysPage() {
     try {
       const r = await apiJson<any>("/v1/portal/api-keys", {
         method: "POST",
-        body: JSON.stringify({ label: nm })
+        body: JSON.stringify({ label: nm }),
       });
 
       const secret: string | undefined = r?.rawApiKey ?? r?.apiKey ?? r?.key ?? r?.token ?? r?.secret;
+
+      setLabel("");
+
+      // ✅ Refresh the list but keep the secret panel open
+      await load({ preserveRawKey: true });
+
       if (secret) {
         setRawKey(secret);
       } else {
         setErr("API key created, but secret was not returned.");
       }
-
-      setLabel("");
-      await load();
     } catch {
       setErr("Could not create key. Try again.");
     } finally {
@@ -144,23 +150,25 @@ export default function ApiKeysPage() {
       void navigator.clipboard.writeText(text);
     } catch {}
   }
-function EmailText({ email }: { email: string }) {
-  const parts = email.split(/([@.])/);
-  return (
-    <span className="emailInline" aria-label={email}>
-      {parts.map((p, i) =>
-        p === "@" || p === "." ? (
-          <span key={String(i)}>
-            {p}
-            <wbr />
-          </span>
-        ) : (
-          <span key={String(i)}>{p}</span>
-        )
-      )}
-    </span>
-  );
-}
+
+  function EmailText({ email }: { email: string }) {
+    const parts = email.split(/([@.])/);
+    return (
+      <span className="emailInline" aria-label={email}>
+        {parts.map((p, i) =>
+          p === "@" || p === "." ? (
+            <span key={String(i)}>
+              {p}
+              <wbr />
+            </span>
+          ) : (
+            <span key={String(i)}>{p}</span>
+          )
+        )}
+      </span>
+    );
+  }
+
   return (
     <div className="console">
       <style>{css}</style>
@@ -179,34 +187,34 @@ function EmailText({ email }: { email: string }) {
             </div>
           </div>
 
-<nav className="nav" aria-label="Portal navigation">
-  <Link className="navLink" href="/console">
-    Dashboard
-  </Link>
-  <Link className="navLink" href="/usage">
-    Usage
-  </Link>
-  <Link className="navLink" href="/billing">
-    Billing
-  </Link>
+          <nav className="nav" aria-label="Portal navigation">
+            <Link className="navLink" href="/console">
+              Dashboard
+            </Link>
+            <Link className="navLink" href="/usage">
+              Usage
+            </Link>
+            <Link className="navLink" href="/billing">
+              Billing
+            </Link>
 
-  <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-    Demo
-  </a>
+            <a className="navLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+              Demo
+            </a>
 
-  {!isPending ? (
-    <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-      Attester Tool
-    </a>
-  ) : null}
+            {!isPending ? (
+              <a className="navLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+                Attester Tool
+              </a>
+            ) : null}
 
-  <Link className="navLink" href="/terms">
-    Terms
-  </Link>
-  <Link className="navLink" href="/privacy">
-    Privacy
-  </Link>
-</nav>
+            <Link className="navLink" href="/terms">
+              Terms
+            </Link>
+            <Link className="navLink" href="/privacy">
+              Privacy
+            </Link>
+          </nav>
         </header>
 
         <div className="main">
@@ -219,16 +227,18 @@ function EmailText({ email }: { email: string }) {
                   Keys mint access · receipts prove presence
                 </div>
 
-               <div className="emailRow">
-  <div className="emailPill" title={me?.customer.email ?? "—"}>
-    <span className="emailPillDot" aria-hidden />
-    <span className="emailPillText">
-      <EmailText email={me?.customer.email ?? "—"} />
-    </span>
-  </div>
-</div>
+                <div className="emailRow">
+                  <div className="emailPill" title={me?.customer.email ?? "—"}>
+                    <span className="emailPillDot" aria-hidden />
+                    <span className="emailPillText">
+                      <EmailText email={me?.customer.email ?? "—"} />
+                    </span>
+                  </div>
+                </div>
+
                 <p className="lead">
-                  Create keys for server-side calls to PBI. Treat secrets like passwords—store them once, securely. Plan limits apply automatically.
+                  Create keys for server-side calls to PBI. Treat secrets like passwords—store them once, securely. Plan limits apply
+                  automatically.
                 </p>
 
                 <div className="kpiRow">
@@ -322,18 +332,19 @@ function EmailText({ email }: { email: string }) {
 
                   <div className="divider" />
 
-<div className="kicker">Tools</div>
-<div className="planBtns" style={{ marginTop: 10 }}>
-  <a className="btnGhostLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
-    Demo →
-  </a>
+                  <div className="kicker">Tools</div>
+                  <div className="planBtns" style={{ marginTop: 10 }}>
+                    <a className="btnGhostLink" href="https://demo.kojib.com" target="_blank" rel="noreferrer">
+                      Demo →
+                    </a>
 
-  {!isPending ? (
-    <a className="btnGhostLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
-    Attester Tool →
-    </a>
-  ) : null}
-</div>
+                    {!isPending ? (
+                      <a className="btnGhostLink" href="https://tool.kojib.com" target="_blank" rel="noreferrer">
+                        Attester Tool →
+                      </a>
+                    ) : null}
+                  </div>
+
                   <div className="hint">
                     Need procurement / SLA / burst capacity? Use <b>Enterprise (PBI Assured)</b> in Billing.
                   </div>
@@ -397,7 +408,11 @@ function EmailText({ email }: { email: string }) {
 
                     <div className="cell">
                       {k.is_active ? <span className="status ok">ACTIVE</span> : <span className="status off">REVOKED</span>}
-                      {k.last_used_at ? <div className="mutedSmall" style={{ marginTop: 6 }}>Last used: {fmtDate(k.last_used_at)}</div> : null}
+                      {k.last_used_at ? (
+                        <div className="mutedSmall" style={{ marginTop: 6 }}>
+                          Last used: {fmtDate(k.last_used_at)}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="cell right">
